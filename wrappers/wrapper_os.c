@@ -22,16 +22,17 @@
  *
  */
 
-#include "wrappers_defs.h"
+#include <sys/time.h>
 
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
 
 #include "pthread.h"
 
 #include "esp_log.h"
+
+#include "iot_import.h"
 
 static const char *TAG = "os";
 
@@ -59,6 +60,27 @@ void pthread_exit(void *value_ptr)
 }
 #endif
 #endif
+
+static long long os_time_get(void)
+{
+    struct timeval tv;
+    long long ms;
+    gettimeofday(&tv, NULL);
+    ms = tv.tv_sec * 1000LL + tv.tv_usec / 1000;
+    return ms;
+}
+
+static long long delta_time = 0;
+
+void HAL_UTC_Set(long long ms)
+{
+    delta_time = ms - os_time_get();
+}
+
+long long HAL_UTC_Get(void)
+{
+    return delta_time + os_time_get();
+}
 
 /**
  * @brief Create a mutex.
@@ -301,4 +323,16 @@ int HAL_Timer_Stop(void *timer)
     }
 
     return FAIL_RETURN;
+}
+
+int HAL_GetNetifInfo(char *nif_str)
+{
+    memset(nif_str, 0x0, NIF_STRLEN_MAX);
+    /* if the device have only WIFI, then list as follow, note that the len MUST NOT exceed NIF_STRLEN_MAX */
+    const char *net_info = "WiFi|03ACDEFF0032";
+    strncpy(nif_str, net_info, NIF_STRLEN_MAX);
+    /* if the device have ETH, WIFI, GSM connections, then list all of them as follow, note that the len MUST NOT exceed NIF_STRLEN_MAX */
+    // const char *multi_net_info = "ETH|0123456789abcde|WiFi|03ACDEFF0032|Cellular|imei_0123456789abcde|iccid_0123456789abcdef01234|imsi_0123456789abcde|msisdn_86123456789ab");
+    // strncpy(nif_str, multi_net_info, strlen(multi_net_info));
+    return strlen(nif_str);
 }

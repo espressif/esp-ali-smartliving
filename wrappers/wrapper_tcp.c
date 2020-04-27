@@ -24,14 +24,14 @@
 
 #include <stdio.h>
 #include <string.h>
+
 #include <netdb.h>
 #include <sys/socket.h>
 
-#include "infra_types.h"
-#include "wrappers_defs.h"
-
 #include "esp_system.h"
 #include "esp_log.h"
+
+#include "iot_import.h"
 
 static const char *TAG = "iot_import_tcp";
 

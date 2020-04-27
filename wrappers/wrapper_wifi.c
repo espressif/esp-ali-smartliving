@@ -22,13 +22,14 @@
  *
  */
 
-#include <arpa/inet.h>
 #include <string.h>
 
-#include "iot_import_awss.h"
+#include <arpa/inet.h>
 
 #include "esp_log.h"
 #include "esp_wifi.h"
+
+#include "iot_import.h"
 
 static const char *TAG = "wifi";
 

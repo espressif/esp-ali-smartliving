@@ -22,13 +22,10 @@
  *
  */
 
-#include "infra_types.h"
-#include "infra_defs.h"
-
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 
-#include "ota_wrapper.h"
+#include "iot_import.h"
 
 typedef struct {
     const esp_partition_t     *partition;

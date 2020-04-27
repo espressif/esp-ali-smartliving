@@ -22,19 +22,17 @@
  *
  */
 
-#include "infra_compat.h"
-#include "wrappers_defs.h"
-
 #include <stdio.h>
+#include <string.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include <string.h>
-
 #include "esp_log.h"
+
+#include "iot_import.h"
 
 static const char *TAG = "udp";
 

@@ -25,13 +25,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "infra_defs.h"
-
 #include "esp_err.h"
 #include "esp_log.h"
 
 #include "nvs_flash.h"
 #include "nvs.h"
+
+#include "iot_import.h"
 
 #define MFG_PARTITION_NAME "fctry"
 #define NVS_PRODUCT "aliyun-key"
@@ -101,13 +101,48 @@ static int HAL_GetProductParam(char *param_name, const char *param_name_str)
 
     return read_len;
 }
+
+int HAL_GetPartnerID(char pid_str[PID_STR_MAXLEN])
+{
+    memset(pid_str, 0x0, PID_STR_MAXLEN);
+    strcpy(pid_str, "espressif");
+    return strlen(pid_str);
+}
+
+int HAL_GetModuleID(char mid_str[MID_STR_MAXLEN])
+{
+    memset(mid_str, 0x0, MID_STR_MAXLEN);
+    strcpy(mid_str, "wroom");
+    return strlen(mid_str);
+}
+
+char *HAL_GetChipID(char cid_str[HAL_CID_LEN])
+{
+    memset(cid_str, 0x0, HAL_CID_LEN);
+    strncpy(cid_str, "esp8266", HAL_CID_LEN);
+    cid_str[HAL_CID_LEN - 1] = '\0';
+    return cid_str;
+}
+
+int HAL_GetDeviceID(char device_id[DEVICE_ID_MAXLEN])
+{
+    memset(device_id, 0x0, DEVICE_ID_MAXLEN);
+    char device_name[DEVICE_NAME_MAXLEN] = {0};
+    char product_key[PRODUCT_KEY_MAXLEN] = {0};
+    HAL_GetDeviceName(device_name);
+    HAL_GetProductKey(product_key);
+    HAL_Snprintf(device_id, DEVICE_ID_MAXLEN, "%s.%s", product_key, device_name);
+    device_id[DEVICE_ID_MAXLEN - 1] = '\0';
+    return strlen(device_id);
+}
+
 /**
  * @brief Get device name from user's system persistent storage
  *
  * @param [ou] device_name: array to store device name, max length is IOTX_DEVICE_NAME_LEN
  * @return the actual length of device name
  */
-int HAL_GetDeviceName(char device_name[IOTX_DEVICE_NAME_LEN + 1])
+int HAL_GetDeviceName(char device_name[DEVICE_NAME_MAXLEN])
 {
     return HAL_GetProductParam(device_name, "DeviceName");
 }
@@ -118,7 +153,7 @@ int HAL_GetDeviceName(char device_name[IOTX_DEVICE_NAME_LEN + 1])
  * @param [ou] device_secret: array to store device secret, max length is IOTX_DEVICE_SECRET_LEN
  * @return the actual length of device secret
  */
-int HAL_GetDeviceSecret(char device_secret[IOTX_DEVICE_SECRET_LEN + 1])
+int HAL_GetDeviceSecret(char device_secret[DEVICE_SECRET_MAXLEN])
 {
     return HAL_GetProductParam(device_secret, "DeviceSecret");
 }
@@ -129,12 +164,12 @@ int HAL_GetDeviceSecret(char device_secret[IOTX_DEVICE_SECRET_LEN + 1])
  * @param [ou] product_key: array to store product key, max length is IOTX_PRODUCT_KEY_LEN
  * @return  the actual length of product key
  */
-int HAL_GetProductKey(char product_key[IOTX_PRODUCT_KEY_LEN + 1])
+int HAL_GetProductKey(char product_key[PRODUCT_KEY_MAXLEN])
 {
     return HAL_GetProductParam(product_key, "ProductKey");
 }
 
-int HAL_GetProductSecret(char product_secret[IOTX_PRODUCT_SECRET_LEN + 1])
+int HAL_GetProductSecret(char product_secret[PRODUCT_SECRET_MAXLEN])
 {
     return HAL_GetProductParam(product_secret, "ProductSecret");
 }
@@ -145,16 +180,16 @@ int HAL_GetProductSecret(char product_secret[IOTX_PRODUCT_SECRET_LEN + 1])
  * @param [ou] version: array to store firmware version, max length is IOTX_FIRMWARE_VER_LEN
  * @return the actual length of firmware version
  */
-int HAL_GetFirmwareVersion(char *version)
+int HAL_GetFirmwareVersion(char version[FIRMWARE_VERSION_MAXLEN])
 {
     if (!version) {
         ESP_LOGE(TAG, "%s version is NULL", __func__);
         return 0;
     }
 
-    memset(version, 0, IOTX_FIRMWARE_VER_LEN);
+    memset(version, 0, FIRMWARE_VERSION_MAXLEN);
     int len = strlen(CONFIG_LINKKIT_FIRMWARE_VERSION);
-    if (len > IOTX_FIRMWARE_VER_LEN) {
+    if (len > FIRMWARE_VERSION_MAXLEN) {
         len = 0;
     } else {
         memcpy(version, CONFIG_LINKKIT_FIRMWARE_VERSION, len);
@@ -201,22 +236,22 @@ static int HAL_SetProductParam(char *param_name, const char *param_name_str)
     return write_len;
 }
 
-int HAL_SetDeviceName(char *device_name)
+int HAL_SetDeviceName(char device_name[DEVICE_NAME_MAXLEN])
 {
     return HAL_SetProductParam(device_name, "DeviceName");
 }
 
-int HAL_SetDeviceSecret(char *device_secret)
+int HAL_SetDeviceSecret(char device_secret[DEVICE_SECRET_MAXLEN])
 {
     return HAL_SetProductParam(device_secret, "DeviceSecret");
 }
 
-int HAL_SetProductKey(char *product_key)
+int HAL_SetProductKey(char product_key[PRODUCT_KEY_MAXLEN])
 {
     return HAL_SetProductParam(product_key, "ProductKey");
 }
 
-int HAL_SetProductSecret(char *product_secret)
+int HAL_SetProductSecret(char product_secret[PRODUCT_SECRET_MAXLEN])
 {
     return HAL_SetProductParam(product_secret, "ProductSecret");
 }

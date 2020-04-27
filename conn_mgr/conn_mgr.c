@@ -40,8 +40,7 @@
 
 #include "lwip/apps/sntp.h"
 
-#include "wifi_provision_api.h"
-#include "dm_wrapper.h"
+#include "iot_import.h"
 
 #include "conn_mgr.h"
 

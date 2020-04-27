@@ -22,12 +22,9 @@
  *
  */
 
-#include <netinet/in.h>
 #include <string.h>
 
-#include "infra_defs.h"
-#include "iot_import_awss.h"
-#include "dev_bind_wrapper.h"
+#include <netinet/in.h>
 
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -37,6 +34,8 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include "iot_import.h"
 
 static awss_recv_80211_frame_cb_t s_sniffer_cb;
 
@@ -255,4 +254,12 @@ void HAL_Awss_Switch_Channel(char primary_channel, char secondary_channel, uint8
     if (esp_wifi_set_channel(primary_channel, secondary_channel) != ESP_OK) {
         ESP_LOGW(TAG, "HAL_Awss_Switch_Channel primary %d, second %d", primary_channel, secondary_channel);
     }
+}
+
+int HAL_Awss_Get_Encrypt_Type() {
+    return 3;
+}
+
+int HAL_Awss_Get_Conn_Encrypt_Type() {
+    return 3;
 }

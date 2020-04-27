@@ -2,7 +2,6 @@
 /*
  * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
-#include "infra_config.h"
 
 void HAL_Printf(const char *fmt, ...);
 int HAL_Snprintf(char *str, const int len, const char *fmt, ...);
@@ -10,22 +9,8 @@ int HAL_Snprintf(char *str, const int len, const char *fmt, ...);
 #ifdef DEPRECATED_LINKKIT
 #include "solo.c"
 #else
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "infra_types.h"
-#include "infra_defs.h"
-#include "infra_compat.h"
-#include "infra_compat.h"
-#ifdef INFRA_MEM_STATS
-    #include "infra_mem_stats.h"
-#endif
-#include "dev_model_api.h"
-#include "dm_wrapper.h"
+#include "iot_export_linkkit.h"
 #include "cJSON.h"
-#ifdef ATM_ENABLED
-    #include "at_api.h"
-#endif
 
 #include "lightbulb.h"
 #include "esp_log.h"
@@ -55,10 +40,10 @@ typedef struct {
  *
  */
 
-char PRODUCT_KEY[IOTX_PRODUCT_KEY_LEN + 1] = {0};
-char PRODUCT_SECRET[IOTX_PRODUCT_SECRET_LEN + 1] = {0};
-char DEVICE_NAME[IOTX_DEVICE_NAME_LEN + 1] = {0};
-char DEVICE_SECRET[IOTX_DEVICE_SECRET_LEN + 1] = {0};
+char PRODUCT_KEY[PRODUCT_KEY_MAXLEN] = {0};
+char PRODUCT_SECRET[PRODUCT_SECRET_MAXLEN] = {0};
+char DEVICE_NAME[DEVICE_NAME_MAXLEN] = {0};
+char DEVICE_SECRET[DEVICE_SECRET_MAXLEN] = {0};
 
 static user_example_ctx_t g_user_example_ctx;
 
@@ -406,7 +391,7 @@ static int linkkit_thread(void *paras)
     IOT_RegisterCallback(ITE_SERVICE_REQUEST, user_service_request_event_handler);
     IOT_RegisterCallback(ITE_PROPERTY_SET, user_property_set_event_handler);
     IOT_RegisterCallback(ITE_PROPERTY_GET, user_property_get_event_handler);
-    IOT_RegisterCallback(ITE_PROPERTY_DESIRED_GET_REPLY, user_property_desired_get_reply_event_handler);
+//    IOT_RegisterCallback(ITE_PROPERTY_DESIRED_GET_REPLY, user_property_desired_get_reply_event_handler);
     IOT_RegisterCallback(ITE_REPORT_REPLY, user_report_reply_event_handler);
     IOT_RegisterCallback(ITE_TRIGGER_EVENT_REPLY, user_trigger_event_reply_event_handler);
     IOT_RegisterCallback(ITE_TIMESTAMP_REPLY, user_timestamp_reply_event_handler);

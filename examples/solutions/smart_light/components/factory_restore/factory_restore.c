@@ -28,8 +28,9 @@
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
 
-#include "dm_wrapper.h"
 #include "conn_mgr.h"
+
+#include "iot_export.h"
 
 #define FACTORY_QUICK_REBOOT_TIMEOUT        (CONFIG_FACTORY_QUICK_REBOOT_TIMEOUT * 1000)
 #define FACTORY_QUICK_REBOOT_MAX_TIMES      CONFIG_FACTORY_QUICK_REBOOT_MAX_TIMES

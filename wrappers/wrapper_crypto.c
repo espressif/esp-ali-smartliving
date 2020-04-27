@@ -22,8 +22,6 @@
  *
  */
 
-#include "infra_compat.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,6 +33,8 @@
 #else
 #include "mbedtls/aes.h"
 #endif
+
+#include "iot_import.h"
 
 #define AES_BLOCK_SIZE 16
 

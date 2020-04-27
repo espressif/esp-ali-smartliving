@@ -27,6 +27,11 @@ build_esp8266_demo:
     - git submodule update --init --recursive
     - git clone --branch release/v3.2 --depth 1 $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git
     - export IDF_PATH=$CI_PROJECT_DIR/ESP8266_RTOS_SDK
+    - cd ali-smartliving-device-sdk-c
+    - make distclean
+    - echo 1 | make reconfig
+    - make
+    - cd ..
     - cd examples/solutions/smart_light
     - make chip=esp8266 defconfig
     - make

@@ -29,7 +29,7 @@
 #include "freertos/timers.h"
 
 #include "pthread.h"
-
+#include "esp_wifi.h"
 #include "esp_log.h"
 
 #include "iot_import.h"
@@ -329,7 +329,15 @@ int HAL_GetNetifInfo(char *nif_str)
 {
     memset(nif_str, 0x0, NIF_STRLEN_MAX);
     /* if the device have only WIFI, then list as follow, note that the len MUST NOT exceed NIF_STRLEN_MAX */
-    const char *net_info = "WiFi|03ACDEFF0032";
+    char net_info[NIF_STRLEN_MAX + 1] = {0} ;
+    uint8_t mac[6] = {0};
+    esp_err_t ret = esp_wifi_get_mac(WIFI_IF_STA, mac);
+
+    if (ret != ESP_OK) {
+        return 0;
+    }
+
+    sprintf(net_info, "WIFI|%02X%02X%02X%02X%02X%02X", MAC2STR(mac));
     strncpy(nif_str, net_info, NIF_STRLEN_MAX);
     /* if the device have ETH, WIFI, GSM connections, then list all of them as follow, note that the len MUST NOT exceed NIF_STRLEN_MAX */
     // const char *multi_net_info = "ETH|0123456789abcde|WiFi|03ACDEFF0032|Cellular|imei_0123456789abcde|iccid_0123456789abcdef01234|imsi_0123456789abcde|msisdn_86123456789ab");

@@ -52,6 +52,7 @@ build_esp32_demo:
     - git --version
     - git submodule update --init --recursive
     - git clone --recursive $GITLAB_SSH_SERVER/idf/esp-idf.git -b release/v3.3
+    - export IDF_PATH=$CI_PROJECT_DIR/esp-idf
     - cp -r patch/* ali-smartliving-device-sdk-c
     - cd ali-smartliving-device-sdk-c
     - make distclean
@@ -77,7 +78,13 @@ build_esp32_demo_cmake_v3.3:
     - git --version
     - git submodule update --init --recursive
     - git clone --recursive $GITLAB_SSH_SERVER/idf/esp-idf.git -b release/v3.3
-    - cd examples/solutions/smart_light
+    - export IDF_PATH=$CI_PROJECT_DIR/esp-idf
+    - cp -r patch/* ali-smartliving-device-sdk-c
+    - cd ali-smartliving-device-sdk-c
+    - make distclean
+    - echo 1 | make reconfig
+    - make -j1
+    - cd ../examples/solutions/smart_light
     - $IDF_PATH/tools/idf.py build
 
 push_to_github:

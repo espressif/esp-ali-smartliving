@@ -166,16 +166,125 @@ static int user_property_set_event_handler(const int devid, const char *request,
     return SUCCESS_RETURN;
 }
 
-static int user_property_desired_get_reply_event_handler(const char *serviceid, const int serviceid_len)
+static int user_property_get_event_handler(const int devid, const char *request, const int request_len, char **response,
+                                           int *response_len)
 {
-    ESP_LOGI(TAG, "ITE_PROPERTY_DESIRED_GET_REPLY");
+    cJSON *request_root = NULL, *item_propertyid = NULL;
+    cJSON *response_root = NULL;
+    int index = 0;
+    EXAMPLE_TRACE("Property Get Received, Devid: %d, Request: %s", devid, request);
 
-    return SUCCESS_RETURN;
-}
+    /* Parse Request */
+    request_root = cJSON_Parse(request);
+    if (request_root == NULL || !cJSON_IsArray(request_root)) {
+        EXAMPLE_TRACE("JSON Parse Error");
+        return -1;
+    }
 
-static int user_property_get_event_handler(const int devid, const char *serviceid, const int serviceid_len, char **response, int *response_len)
-{
-    ESP_LOGI(TAG,"Get Property Message ID: %d", devid);
+    /* Prepare Response */
+    response_root = cJSON_CreateObject();
+    if (response_root == NULL) {
+        EXAMPLE_TRACE("No Enough Memory");
+        cJSON_Delete(request_root);
+        return -1;
+    }
+
+    for (index = 0; index < cJSON_GetArraySize(request_root); index++) {
+        item_propertyid = cJSON_GetArrayItem(request_root, index);
+        if (item_propertyid == NULL || !cJSON_IsString(item_propertyid)) {
+            EXAMPLE_TRACE("JSON Parse Error");
+            cJSON_Delete(request_root);
+            cJSON_Delete(response_root);
+            return -1;
+        }
+
+        EXAMPLE_TRACE("Property ID, index: %d, Value: %s", index, item_propertyid->valuestring);
+
+        if (strcmp("WIFI_Tx_Rate", item_propertyid->valuestring) == 0) {
+            cJSON_AddNumberToObject(response_root, "WIFI_Tx_Rate", 1111);
+        } else if (strcmp("WIFI_Rx_Rate", item_propertyid->valuestring) == 0) {
+            cJSON_AddNumberToObject(response_root, "WIFI_Rx_Rate", 2222);
+        } else if (strcmp("RGBColor", item_propertyid->valuestring) == 0) {
+            cJSON *item_rgbcolor = cJSON_CreateObject();
+            if (item_rgbcolor == NULL) {
+                cJSON_Delete(request_root);
+                cJSON_Delete(response_root);
+                return -1;
+            }
+            cJSON_AddNumberToObject(item_rgbcolor, "Red", 100);
+            cJSON_AddNumberToObject(item_rgbcolor, "Green", 100);
+            cJSON_AddNumberToObject(item_rgbcolor, "Blue", 100);
+            cJSON_AddItemToObject(response_root, "RGBColor", item_rgbcolor);
+        } else if (strcmp("HSVColor", item_propertyid->valuestring) == 0) {
+            cJSON *item_hsvcolor = cJSON_CreateObject();
+            if (item_hsvcolor == NULL) {
+                cJSON_Delete(request_root);
+                cJSON_Delete(response_root);
+                return -1;
+            }
+            cJSON_AddNumberToObject(item_hsvcolor, "Hue", 50);
+            cJSON_AddNumberToObject(item_hsvcolor, "Saturation", 50);
+            cJSON_AddNumberToObject(item_hsvcolor, "Value", 50);
+            cJSON_AddItemToObject(response_root, "HSVColor", item_hsvcolor);
+        } else if (strcmp("HSLColor", item_propertyid->valuestring) == 0) {
+            cJSON *item_hslcolor = cJSON_CreateObject();
+            if (item_hslcolor == NULL) {
+                cJSON_Delete(request_root);
+                cJSON_Delete(response_root);
+                return -1;
+            }
+            cJSON_AddNumberToObject(item_hslcolor, "Hue", 70);
+            cJSON_AddNumberToObject(item_hslcolor, "Saturation", 70);
+            cJSON_AddNumberToObject(item_hslcolor, "Lightness", 70);
+            cJSON_AddItemToObject(response_root, "HSLColor", item_hslcolor);
+        } else if (strcmp("WorkMode", item_propertyid->valuestring) == 0) {
+            cJSON_AddNumberToObject(response_root, "WorkMode", 4);
+        } else if (strcmp("NightLightSwitch", item_propertyid->valuestring) == 0) {
+            cJSON_AddNumberToObject(response_root, "NightLightSwitch", 1);
+        } else if (strcmp("Brightness", item_propertyid->valuestring) == 0) {
+            cJSON_AddNumberToObject(response_root, "Brightness", 30);
+        } else if (strcmp("LightSwitch", item_propertyid->valuestring) == 0) {
+            cJSON_AddNumberToObject(response_root, "LightSwitch", 1);
+        } else if (strcmp("ColorTemperature", item_propertyid->valuestring) == 0) {
+            cJSON_AddNumberToObject(response_root, "ColorTemperature", 2800);
+        } else if (strcmp("PropertyCharacter", item_propertyid->valuestring) == 0) {
+            cJSON_AddStringToObject(response_root, "PropertyCharacter", "testprop");
+        } else if (strcmp("Propertypoint", item_propertyid->valuestring) == 0) {
+            cJSON_AddNumberToObject(response_root, "Propertypoint", 50);
+        } else if (strcmp("LocalTimer", item_propertyid->valuestring) == 0) {
+            cJSON *array_localtimer = cJSON_CreateArray();
+            if (array_localtimer == NULL) {
+                cJSON_Delete(request_root);
+                cJSON_Delete(response_root);
+                return -1;
+            }
+
+            cJSON *item_localtimer = cJSON_CreateObject();
+            if (item_localtimer == NULL) {
+                cJSON_Delete(request_root);
+                cJSON_Delete(response_root);
+                cJSON_Delete(array_localtimer);
+                return -1;
+            }
+            cJSON_AddStringToObject(item_localtimer, "Timer", "10 11 * * * 1 2 3 4 5");
+            cJSON_AddNumberToObject(item_localtimer, "Enable", 1);
+            cJSON_AddNumberToObject(item_localtimer, "IsValid", 1);
+            cJSON_AddItemToArray(array_localtimer, item_localtimer);
+            cJSON_AddItemToObject(response_root, "LocalTimer", array_localtimer);
+        }
+    }
+    cJSON_Delete(request_root);
+
+    *response = cJSON_PrintUnformatted(response_root);
+    if (*response == NULL) {
+        EXAMPLE_TRACE("No Enough Memory");
+        cJSON_Delete(response_root);
+        return -1;
+    }
+    cJSON_Delete(response_root);
+    *response_len = strlen(*response);
+
+    EXAMPLE_TRACE("Property Get Response: %s", *response);
 
     return SUCCESS_RETURN;
 }
@@ -253,14 +362,14 @@ static int user_timestamp_reply_event_handler(const char *timestamp)
     return SUCCESS_RETURN;
 }
 
-static int user_toplist_reply_event_handler(const int devid, const int msgid, const int code, const char *eventid, const int eventid_len)
+static int user_topolist_reply_handler(const int devid, const int id, const int code, const char *payload, const int payload_len)
 {
     EXAMPLE_TRACE("ITE_TOPOLIST_REPLY");
 
     return SUCCESS_RETURN;
 }
 
-static int user_permit_join_event_handler(const int devid, const int msgid, const int code, const char *eventid, const int eventid_len)
+static int user_permit_join_event_handler(const char *product_key, const int time)
 {
     EXAMPLE_TRACE("ITE_PERMIT_JOIN");
     
@@ -312,49 +421,16 @@ static int user_mqtt_connect_succ_event_handler(void)
     return SUCCESS_RETURN;
 }
 
-static void user_post_property(void)
+static int user_event_notify_handler(const int devid, const char *request, const int request_len)
 {
-    static int cnt = 0;
     int res = 0;
+    EXAMPLE_TRACE("Event notify Received, Devid: %d, Request: %s", devid, request);
 
-    char property_payload[30] = {0};
-    HAL_Snprintf(property_payload, sizeof(property_payload), "{\"Counter\": %d}", cnt++);
-
-    res = IOT_Linkkit_Report(EXAMPLE_MASTER_DEVID, ITM_MSG_POST_PROPERTY,
-                             (unsigned char *)property_payload, strlen(property_payload));
-
+    res = IOT_Linkkit_Report(EXAMPLE_MASTER_DEVID, ITM_MSG_EVENT_NOTIFY_REPLY,
+                             (unsigned char *)request, request_len);
     EXAMPLE_TRACE("Post Property Message ID: %d", res);
-}
 
-static void user_post_event(void)
-{
-    int res = 0;
-    char *event_id = "HardwareError";
-    char *event_payload = "{\"ErrorCode\": 0}";
-
-    res = IOT_Linkkit_TriggerEvent(EXAMPLE_MASTER_DEVID, event_id, strlen(event_id),
-                                   event_payload, strlen(event_payload));
-    EXAMPLE_TRACE("Post Event Message ID: %d", res);
-}
-
-static void user_deviceinfo_update(void)
-{
-    int res = 0;
-    char *device_info_update = "[{\"attrKey\":\"abc\",\"attrValue\":\"hello,world\"}]";
-
-    res = IOT_Linkkit_Report(EXAMPLE_MASTER_DEVID, ITM_MSG_DEVICEINFO_UPDATE,
-                             (unsigned char *)device_info_update, strlen(device_info_update));
-    EXAMPLE_TRACE("Device Info Update Message ID: %d", res);
-}
-
-static void user_deviceinfo_delete(void)
-{
-    int res = 0;
-    char *device_info_delete = "[{\"attrKey\":\"abc\"}]";
-
-    res = IOT_Linkkit_Report(EXAMPLE_MASTER_DEVID, ITM_MSG_DEVICEINFO_DELETE,
-                             (unsigned char *)device_info_delete, strlen(device_info_delete));
-    EXAMPLE_TRACE("Device Info Delete Message ID: %d", res);
+    return 0;
 }
 
 static int linkkit_thread(void *paras)
@@ -390,17 +466,18 @@ static int linkkit_thread(void *paras)
     IOT_RegisterCallback(ITE_RAWDATA_ARRIVED, user_rawdata_arrived_event_handler);
     IOT_RegisterCallback(ITE_SERVICE_REQUEST, user_service_request_event_handler);
     IOT_RegisterCallback(ITE_PROPERTY_SET, user_property_set_event_handler);
+    /*Only for local communication service(ALCS)*/
     IOT_RegisterCallback(ITE_PROPERTY_GET, user_property_get_event_handler);
-//    IOT_RegisterCallback(ITE_PROPERTY_DESIRED_GET_REPLY, user_property_desired_get_reply_event_handler);
     IOT_RegisterCallback(ITE_REPORT_REPLY, user_report_reply_event_handler);
     IOT_RegisterCallback(ITE_TRIGGER_EVENT_REPLY, user_trigger_event_reply_event_handler);
     IOT_RegisterCallback(ITE_TIMESTAMP_REPLY, user_timestamp_reply_event_handler);
-    IOT_RegisterCallback(ITE_TOPOLIST_REPLY, user_toplist_reply_event_handler);
+    IOT_RegisterCallback(ITE_TOPOLIST_REPLY, user_topolist_reply_handler);
     IOT_RegisterCallback(ITE_PERMIT_JOIN, user_permit_join_event_handler);
     IOT_RegisterCallback(ITE_INITIALIZE_COMPLETED, user_initialized);
     IOT_RegisterCallback(ITE_FOTA, user_fota_event_handler);
     IOT_RegisterCallback(ITE_COTA, user_cota_event_handler);
     IOT_RegisterCallback(ITE_MQTT_CONNECT_SUCC, user_mqtt_connect_succ_event_handler);
+    IOT_RegisterCallback(ITE_EVENT_NOTIFY, user_event_notify_handler);
 
     domain_type = IOTX_CLOUD_REGION_SHANGHAI;
     IOT_Ioctl(IOTX_IOCTL_SET_DOMAIN, (void *)&domain_type);

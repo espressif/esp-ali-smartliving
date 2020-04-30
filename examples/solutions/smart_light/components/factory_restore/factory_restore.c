@@ -40,6 +40,22 @@
 
 static const char *TAG = "factory_rst";
 
+static void factory_set_sc_mode(void) {
+    uint8_t mode_kv = 0, mode_set = 1;
+    int len_kv = sizeof(uint8_t);
+
+    int ret = HAL_Kv_Get(SC_MODE, &mode_kv, &len_kv);
+    if (ret == ESP_OK) {
+        if (mode_kv == 1) {
+            mode_set = 2;
+        } else {
+            mode_set = 1;
+        }
+    }
+
+    conn_mgr_set_sc_mode(mode_set);
+}
+
 static esp_err_t factory_restore_handle(void)
 {
     esp_err_t ret = ESP_OK;
@@ -63,6 +79,7 @@ static esp_err_t factory_restore_handle(void)
 
         ESP_LOGW(TAG, "factory restore");
         conn_mgr_reset_wifi_config();
+        factory_set_sc_mode();
     } else {
         ESP_LOGI(TAG, "quick reboot times %d, don't need to restore", quick_reboot_times);
     }

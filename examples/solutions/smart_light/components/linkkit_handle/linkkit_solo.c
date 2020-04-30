@@ -379,14 +379,16 @@ static int user_permit_join_event_handler(const char *product_key, const int tim
 /** fota event handler **/
 static int user_fota_event_handler(int type, const char *version)
 {
-    char buffer[1024] = {0};
-    int buffer_length = 1024;
+    char buffer[1025 + 1] = {0};
+    int buffer_length = 1025; //must set want read len to len + 1
 
     /* 0 - new firmware exist, query the new firmware */
     if (type == 0) {
         EXAMPLE_TRACE("New Firmware Version: %s", version);
 
-        IOT_Linkkit_Query(EXAMPLE_MASTER_DEVID, ITM_MSG_QUERY_FOTA_DATA, (unsigned char *)buffer, buffer_length);
+        if (IOT_Linkkit_Query(EXAMPLE_MASTER_DEVID, ITM_MSG_QUERY_FOTA_DATA, (unsigned char *)buffer, buffer_length) == SUCCESS_RETURN) {
+            HAL_Reboot();
+        }
     }
 
     return 0;

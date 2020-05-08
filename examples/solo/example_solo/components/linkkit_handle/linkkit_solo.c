@@ -63,7 +63,7 @@ static int user_disconnected_event_handler(void)
 static int user_down_raw_data_arrived_event_handler(const int devid, const unsigned char *payload,
         const int payload_len)
 {
-    EXAMPLE_TRACE("Down Raw Message, Devid: %d, Payload Length: %d, data is %.*s", devid, payload_len, payload_len, payload);
+    EXAMPLE_TRACE("Down Raw Message, Devid: %d, Payload Length: %d", devid, payload_len);
     
     return 0;
 }
@@ -447,7 +447,7 @@ static int linkkit_thread(void *paras)
         IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MS);
 
         if (post_flag) {
-#ifdef SUPPORT_RAW_DATA
+#ifndef CONFIG_SUPPORT_RAW_DATA
             /* Post Proprety Example */
             if (user_master_dev_available()) {
                 user_post_property();

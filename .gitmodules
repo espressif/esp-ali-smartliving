@@ -1,4 +1,0 @@
-[submodule "ali-smartliving-device-sdk-c"]
-	path = ali-smartliving-device-sdk-c
-	url = https://code.aliyun.com/living_platform/ali-smartliving-device-sdk-c.git
-	branch = rel_1.3.0

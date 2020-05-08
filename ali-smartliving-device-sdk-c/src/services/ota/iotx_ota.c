@@ -209,10 +209,22 @@ static int ota_callback(void *pcontext, const char *msg, uint32_t msg_len, iotx_
                 return -1;
             }
 
-            if (0 != otalib_GetParams(pvalue, val_len, &h_ota->purl, &h_ota->version, h_ota->md5sum, &h_ota->size_file)) {
-                OTA_LOG_ERROR("Get config parameter failed");
+            if (0 != otalib_GetFotaParams(pvalue, val_len, &h_ota->version, &h_ota->size_file,
+                                            &h_ota->sign, &h_ota->signMethod, &h_ota->purl)) {
+                OTA_LOG_ERROR("Get firmware parameter failed");
                 return -1;
             }
+
+            h_ota->size_fetched = 0;
+            if (NULL != h_ota->md5) {
+                otalib_MD5Deinit(h_ota->md5);
+            }
+            h_ota->md5 = otalib_MD5Init();
+
+            if (NULL != h_ota->sha256) {
+                otalib_Sha256Deinit(h_ota->sha256);
+            }
+            h_ota->sha256 = otalib_Sha256Init();
 
             if (NULL == (h_ota->ch_fetch = ofc_Init(h_ota->purl))) {
                 OTA_LOG_ERROR("Initialize fetch module failed");
@@ -1057,7 +1069,7 @@ int IOT_OTA_Ioctl(void *handle, IOT_OTA_CmdType_t type, void *buf, size_t buf_le
                         *((uint32_t *)buf) = 0;
                     }
                 }
-                if (0 == strncmp(h_ota->signMethod, "Sha256", strlen(h_ota->signMethod))) {
+                if (0 == strncmp(h_ota->signMethod, "SHA256", strlen(h_ota->signMethod))) {
                     char sha256_str[65];
                     otalib_Sha256Finalize(h_ota->sha256, sha256_str);
                     OTA_LOG_DEBUG("origin=%s, now=%s", h_ota->sign, sha256_str);

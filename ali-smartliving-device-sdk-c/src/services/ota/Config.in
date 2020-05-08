@@ -9,3 +9,11 @@ config OTA_ENABLED
 
         Switching to "y" leads to providing such capability via IOT_OTA_XXX() APIs
 
+config SUPPORT_HTTP_OTA
+    depends on OTA_ENABLED
+    bool "FEATURE_SUPPORT_HTTP_OTA"
+    default y
+
+    help
+        SUPPORT HTTP OTA
+

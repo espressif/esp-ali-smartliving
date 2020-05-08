@@ -101,8 +101,13 @@ int32_t ofc_Fetch(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s)
         ca =NULL;
         h_odc->http.net.product_key = NULL;
     }
+#ifdef SUPPORT_HTTP_OTA
+    if (0 != httpclient_common(&h_odc->http, h_odc->url, 80,NULL, HTTPCLIENT_GET, timeout_s * 1000,
+                               &h_odc->http_data)) {
+#else
     if (0 != httpclient_common(&h_odc->http, h_odc->url, port,ca, HTTPCLIENT_GET, timeout_s * 1000,
                                &h_odc->http_data)) {
+#endif
         OTA_LOG_ERROR("fetch firmware failed");
         return -1;
     }

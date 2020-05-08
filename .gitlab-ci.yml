@@ -27,7 +27,6 @@ build_esp8266_demo:
     - git submodule update --init --recursive
     - git clone --recursive $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git -b release/v3.3
     - export IDF_PATH=$CI_PROJECT_DIR/ESP8266_RTOS_SDK
-    - cp -r patch/* ali-smartliving-device-sdk-c
     - cd ali-smartliving-device-sdk-c
     - make distclean
     - echo 2 | make reconfig
@@ -53,7 +52,6 @@ build_esp32_demo:
     - git submodule update --init --recursive
     - git clone --recursive $GITLAB_SSH_SERVER/idf/esp-idf.git -b release/v3.3
     - export IDF_PATH=$CI_PROJECT_DIR/esp-idf
-    - cp -r patch/* ali-smartliving-device-sdk-c
     - cd ali-smartliving-device-sdk-c
     - make distclean
     - echo 1 | make reconfig
@@ -79,7 +77,6 @@ build_esp32_demo_cmake_v3.3:
     - git submodule update --init --recursive
     - git clone --recursive $GITLAB_SSH_SERVER/idf/esp-idf.git -b release/v3.3
     - export IDF_PATH=$CI_PROJECT_DIR/esp-idf
-    - cp -r patch/* ali-smartliving-device-sdk-c
     - cd ali-smartliving-device-sdk-c
     - make distclean
     - echo 1 | make reconfig

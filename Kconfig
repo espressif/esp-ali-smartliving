@@ -69,6 +69,21 @@ menu "iotkit embedded"
                 Select this option to enable device model gateway
     endmenu
 
+    menu "Aliyun SNTP config"
+        config SNTP_RETRY_TIMEOUT
+            int "SNTP retry interval time (ms)"
+            range 1000 15000
+            default 1000
+            help
+                The interval time that SNTP retry to get timestamp
+        config SNTP_RETRY_MAX
+            int "SNTP retry counts"
+            range 1 10
+            default 10
+            help
+                The retry counts that SNTP to get timestamp
+    endmenu
+
 config HAL_SEM_MAX_COUNT
     int "The maximum count value that can be reached of the semaphore"
     default 255

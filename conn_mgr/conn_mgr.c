@@ -121,27 +121,27 @@ static esp_err_t conn_mgr_obtain_time(void)
     sntp_setservername(1, "ntp2.aliyun.com");
     sntp_setservername(2, "ntp3.aliyun.com");
     sntp_init();
+    // Set timezone to China Standard Time
+    setenv("TZ", "CST-8", 1);
+    tzset();
 
     time_t now = 0;
     struct tm timeinfo = { 0 };
     int sntp_retry_cnt = 0;
-    int sntp_retry_time = 0;
+    int sntp_retry_time = CONFIG_SNTP_RETRY_TIMEOUT;
+
     while (1) {
-        for (int32_t i = 0; (i < (SNTP_RECV_TIMEOUT / 100)) && timeinfo.tm_year < (2019 - 1900); i ++) {
-            vTaskDelay(100 / portTICK_RATE_MS);
-            time(&now);
-            localtime_r(&now, &timeinfo);
-        }
-
-        if (timeinfo.tm_year < (2019 - 1900) && sntp_retry_cnt < (SNTP_RECV_TIMEOUT / 100)) {
-            sntp_retry_time = SNTP_RECV_TIMEOUT << sntp_retry_cnt;
-
-            if (SNTP_RECV_TIMEOUT << (sntp_retry_cnt + 1) < SNTP_RETRY_TIMEOUT_MAX) {
-                sntp_retry_cnt ++;
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        if (timeinfo.tm_year < (2019 - 1900)) {
+            if (sntp_retry_cnt < CONFIG_SNTP_RETRY_MAX) {
+                ESP_LOGI(TAG, "SNTP get time failed (%d), retry after %d ms\n", sntp_retry_cnt, sntp_retry_time);
+                vTaskDelay(sntp_retry_time / portTICK_RATE_MS);
+            } else {
+                ESP_LOGI(TAG, "SNTP get %d time failed, break\n", sntp_retry_cnt);
+                break;
             }
-
-            ESP_LOGI(TAG,"SNTP get time failed, retry after %d ms\n", sntp_retry_time);
-            vTaskDelay(sntp_retry_time / portTICK_RATE_MS);
+            sntp_retry_cnt ++;
         } else {
             ESP_LOGI(TAG,"SNTP get time success\n");
             break;

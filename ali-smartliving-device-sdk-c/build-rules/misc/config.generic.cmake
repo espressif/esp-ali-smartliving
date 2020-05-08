@@ -1,0 +1,8 @@
+CONFIG_ENV_CFLAGS   += \
+    -Os -Wall \
+    -D_PLATFORM_IS_HOST_ \
+    -DCONFIG_HTTP_AUTH_TIMEOUT=5000 \
+    -DCONFIG_MID_HTTP_TIMEOUT=5000 \
+    -DCONFIG_GUIDER_AUTH_TIMEOUT=10000 \
+
+LDFLAGS             += -lpthread -lrt

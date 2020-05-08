@@ -20,7 +20,7 @@ menu "Device Model Configurations"
     config ALCS_ENABLED
         bool "FEATURE_ALCS_ENABLED"
         depends on (DEVICE_MODEL_ENABLED && WIFI_PROVISION_ENABLED)
-        default n
+        default y
         help
             ALCS(Alibaba Local Communication Service) enable customers communicate with IoT devices from cellphone without Internet
 

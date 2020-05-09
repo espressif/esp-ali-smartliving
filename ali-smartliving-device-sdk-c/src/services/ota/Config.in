@@ -17,3 +17,10 @@ config SUPPORT_HTTP_OTA
     help
         SUPPORT HTTP OTA
 
+config SUPPORT_SECURITY_OTA
+    depends on OTA_ENABLED
+    bool "FEATURE_SUPPORT_SECURITY_OTA"
+    default n
+
+    help
+        SUPPORT SECURITY OTA

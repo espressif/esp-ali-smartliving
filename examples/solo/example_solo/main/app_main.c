@@ -40,7 +40,11 @@
 static const char *TAG = "app main";
 
 static bool linkkit_started = false;
-
+#ifdef CONFIG_IDF_TARGET_ESP8266
+#define LINK_MAIN_TASK_SIZE 5 * 1024
+#else
+#define LINK_MAIN_TASK_SIZE 10 * 1024
+#endif
 static esp_err_t wifi_event_handle(void *ctx, system_event_t *event)
 {
     switch (event->event_id) {
@@ -50,7 +54,7 @@ static esp_err_t wifi_event_handle(void *ctx, system_event_t *event)
                 if (conn_mgr_get_wifi_config(&wifi_config) == ESP_OK &&
                     strcmp((char *)(wifi_config.sta.ssid), HOTSPOT_AP) &&
                     strcmp((char *)(wifi_config.sta.ssid), ROUTER_AP)) {
-                    xTaskCreate((void (*)(void *))linkkit_main, "example_solo", 5 * 1024, NULL, 5, NULL);
+                    xTaskCreate((void (*)(void *))linkkit_main, "example_solo", LINK_MAIN_TASK_SIZE, NULL, 5, NULL);
                     linkkit_started = true;
                 }
             }

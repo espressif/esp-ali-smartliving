@@ -230,7 +230,7 @@ int otalib_GetConfigParams(const char *json_doc, uint32_t json_len, char **confi
 }
 
 int otalib_GetFotaParams(const char *json_doc, uint32_t json_len, char **version, uint32_t *file_size, char **sign,
-                           char **signMethod, char **url)
+                           char **signMethod, char **url, char **digestsign)
 {
 #define OTA_FILESIZE_STR_LEN    (16)
     char file_size_str[OTA_FILESIZE_STR_LEN + 1];
@@ -265,6 +265,11 @@ int otalib_GetFotaParams(const char *json_doc, uint32_t json_len, char **version
     if (0 != otalib_GetFirmwareVarlenPara(json_doc, json_len, "url", url)) {
         OTA_LOG_ERROR("get value of url key failed");
         return -1;
+    }
+
+    /* get digestsign */
+    if (0 != otalib_GetFirmwareVarlenPara(json_doc, json_len, "digestSign", digestsign)) {
+        OTA_LOG_ERROR("get value of digestSign key failed, maybe not security ota");
     }
 
     return 0;

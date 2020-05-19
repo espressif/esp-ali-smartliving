@@ -5,7 +5,7 @@
 #include "iot_export_linkkit.h"
 #include "cJSON.h"
 #include "esp_log.h"
-
+#include "transport_uart.h"
 
 #define USER_EXAMPLE_YIELD_TIMEOUT_MS (200)
 
@@ -324,9 +324,12 @@ static int user_fota_event_handler(int type, const char *version)
 
     if (type == 0) {
         EXAMPLE_TRACE("New Firmware Version: %s", version);
-
+extern bool transport_task_exist_flag;
+        transport_task_exist_flag = true;
         if (IOT_Linkkit_Query(user_example_ctx->master_devid, ITM_MSG_QUERY_FOTA_DATA, (unsigned char *)buffer, buffer_length) == SUCCESS_RETURN) {
             HAL_Reboot();
+        } else {
+            transport_uart_task_create();
         }
     }
 

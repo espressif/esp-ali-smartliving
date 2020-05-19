@@ -33,9 +33,9 @@
 #include "iot_export.h"
 #include "esp_system.h"
 #include "linkkit_solo.h"
-#include "factory_restore.h"
-
+#include "transport_uart.h"
 #include "conn_mgr.h"
+#include "app_entry.h"
 
 static const char *TAG = "app main";
 
@@ -154,6 +154,8 @@ static void linkkit_event_monitor(int event)
         case IOTX_AWSS_ENABLE_TIMEOUT: // AWSS enable timeout
             // user needs to enable awss again to support get ssid & passwd of router
             ESP_LOGW(TAG, "IOTX_AWSS_ENALBE_TIMEOUT");
+            conn_mgr_stop();
+            printf("heap:%u, max:%u\r\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
             // operate led to indicate user
             break;
 
@@ -184,14 +186,6 @@ static void linkkit_event_monitor(int event)
     }
 }
 
-static void start_conn_mgr()
-{
-    iotx_event_regist_cb(linkkit_event_monitor);    // awss callback
-    conn_mgr_start();
-
-    vTaskDelete(NULL);
-}
-
 static void print_heap()
 {
     char* pbuffer = (char*) malloc(2048);
@@ -208,16 +202,40 @@ static void print_heap()
     vTaskDelete(NULL);
 }
 
+void print_app_config()
+{
+    char PRODUCT_KEY[IOTX_PRODUCT_KEY_LEN + 1] = {0};
+    char PRODUCT_SECRET[IOTX_DEVICE_SECRET_LEN + 1] = {0};
+    char DEVICE_NAME[IOTX_DEVICE_NAME_LEN + 1] = {0};
+    char DEVICE_SECRET[IOTX_DEVICE_SECRET_LEN + 1] = {0};
+
+    HAL_GetProductKey(PRODUCT_KEY);
+    HAL_GetProductSecret(PRODUCT_SECRET);
+    HAL_GetDeviceName(DEVICE_NAME);
+    HAL_GetDeviceSecret(DEVICE_SECRET);
+
+    printf("%s", "....................................................\r\n");
+    printf("%20s : %-s\r\n", "DeviceName", DEVICE_NAME);
+    printf("%20s : %-s\r\n", "DeviceSecret", DEVICE_SECRET);
+    printf("%20s : %-s\r\n", "ProductKey", PRODUCT_KEY);
+    printf("%20s : %-s\r\n", "ProductSecret", PRODUCT_SECRET);
+    printf("%s", "....................................................\r\n");
+}
+
 void app_main()
 {
-    factory_restore_init();
-
     conn_mgr_init();
     conn_mgr_register_wifi_event(wifi_event_handle);
 
     IOT_SetLogLevel(IOT_LOG_INFO);
 
-    xTaskCreate((void (*)(void *))start_conn_mgr, "conn_mgr", 3072, NULL, 5, NULL);
+    iotx_event_regist_cb(linkkit_event_monitor);    // awss callback
 
+    transport_uart_handle_init();
+
+    print_app_config();
     //xTaskCreate((void (*)(void *))print_heap, "print_heap", 2048, NULL, 5, NULL);
+    if (app_check_config_pk()) {
+        xTaskCreate(start_conn_mgr, "conn_mgr", 3072, NULL, 5, NULL);
+    }
 }

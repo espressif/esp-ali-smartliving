@@ -1,9 +1,9 @@
 /*
  * ESPRESSIF MIT License
  *
- * Copyright (c) 2018 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
+ * Copyright (c) 2019 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
  *
- * Permission is hereby granted for use on ESPRESSIF SYSTEMS products only, in which case,
+ * Permission is hereby granted for use on all ESPRESSIF SYSTEMS products, in which case,
  * it is free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including
  * without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
@@ -21,30 +21,19 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+#ifndef _APP_ENTRY_H__
+#define _APP_ENTRY_H__
 
-#pragma once
-
-#include "esp_err.h"
-
+#include "stdint.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**
- * @brief Initialize factory restore 
- * 
- * @note For some devices which don't have a physical restore key or button, such as light, we use
- *       a quick reboot method to record the reboot times, if users quickly reboot the device within
- *       a specific time, configured by FACTORY_QUICK_REBOOT_TIMEOUT, and reboot several times,
- *       configured by FACTORY_QUICK_REBOOT_MAX_TIMES, the device will do a factory restore, clear
- *       stored ssid and password.
- * 
- * @return
- *     - ESP_OK : OK
- *     - others : fail
- */
-esp_err_t factory_restore_init(void);
-
+void app_get_input_param(char *param, size_t param_len);
+int app_check_config_pk(void);
+void start_conn_mgr(void);;
 #ifdef __cplusplus
 }
+#endif
+
 #endif

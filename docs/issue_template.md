@@ -13,7 +13,7 @@
 ## 1. 开发环境
 
 - 模组或开发板：
-- esp-aliyun 版本（``git rev-parse --short HEAD`` 来获取 commit id）：
+- esp-ali-smartliving 版本（``git rev-parse --short HEAD`` 来获取 commit id）：
 - ESP8266_RTOS_SDK 版本（``git rev-parse --short HEAD`` 来获取 commit id）：
 - ESP-IDF 版本（``git rev-parse --short HEAD`` 来获取 commit id）：
 

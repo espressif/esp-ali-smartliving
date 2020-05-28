@@ -26,7 +26,7 @@
 
 #include "esp_log.h"
 
-#include "infra_compat.h"
+#include "iot_export.h"
 
 #include "conn_mgr.h"
 

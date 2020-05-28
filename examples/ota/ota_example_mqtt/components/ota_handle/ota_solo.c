@@ -9,10 +9,7 @@
 
 #include "esp_system.h"
 
-#include "infra_compat.h"
-#include "mqtt_api.h"
-#include "ota_api.h"
-#include "dm_wrapper.h"
+#include "iot_export.h"
 
 void HAL_Reboot();
 

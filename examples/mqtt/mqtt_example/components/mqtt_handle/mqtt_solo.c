@@ -6,8 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "mqtt_api.h"
-#include "dm_wrapper.h"
+#include "iot_export.h"
 
 char DEMO_PRODUCT_KEY[IOTX_PRODUCT_KEY_LEN + 1] = {0};
 char DEMO_DEVICE_NAME[IOTX_DEVICE_NAME_LEN + 1] = {0};

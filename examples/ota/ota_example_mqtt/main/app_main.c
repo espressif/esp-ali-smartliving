@@ -30,7 +30,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 
-#include "infra_compat.h"
+#include "iot_export.h"
 
 #include "ota_solo.h"
 

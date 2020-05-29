@@ -40,8 +40,8 @@
 
 #### 3.下载本工程
    ```
-    git clone https://github.com/espressif/esp-aliyun.git
-    cd esp-aliyun
+    git clone https://github.com/espressif/esp-ali-smartliving.git
+    cd esp-ali-smartliving
    ```
 
 #### 4.烧录三元组信息

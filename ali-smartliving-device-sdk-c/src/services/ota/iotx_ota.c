@@ -43,6 +43,7 @@ typedef struct  {
     char *signMethod;
     char *cota_url;
     char *getType;
+    char *digestsign;           /* security ota*/
 
     int err;                    /* last error code */
 
@@ -175,6 +176,19 @@ static int offline_ota_upgrade_cb(void* pctx, char *json)
 }
 #endif
 
+#ifdef SUPPORT_SECURITY_OTA
+static int ota_security_ota_check(void *pcontext)
+{
+    OTA_Struct_pt h_ota = (OTA_Struct_pt) pcontext;
+    if (h_ota->digestsign) {
+        printf("enter security check\n");
+        return HAL_OTA_Security_check(h_ota->digestsign, h_ota->sign, h_ota->signMethod);
+    }
+
+    return 0;
+}
+#endif
+
 static int ota_callback(void *pcontext, const char *msg, uint32_t msg_len, iotx_ota_topic_types_t type)
 {
     const char *pvalue;
@@ -213,6 +227,28 @@ static int ota_callback(void *pcontext, const char *msg, uint32_t msg_len, iotx_
                 OTA_LOG_ERROR("Get config parameter failed");
                 return -1;
             }
+            if (0 != otalib_GetFotaParams(pvalue, val_len, &h_ota->version, &h_ota->size_file,
+                                            &h_ota->sign, &h_ota->signMethod, &h_ota->purl, &h_ota->digestsign)) {
+                OTA_LOG_ERROR("Get firmware parameter failed");
+                 return -1;
+             }
+
+#ifdef SUPPORT_SECURITY_OTA
+            if (0 != ota_security_ota_check(pcontext)) {
+                OTA_LOG_ERROR("Check ota security failed");
+                return -1;
+            }
+#endif
+            h_ota->size_fetched = 0;
+            if (NULL != h_ota->md5) {
+                otalib_MD5Deinit(h_ota->md5);
+            }
+            h_ota->md5 = otalib_MD5Init();
+
+            if (NULL != h_ota->sha256) {
+                otalib_Sha256Deinit(h_ota->sha256);
+            }
+            h_ota->sha256 = otalib_Sha256Init();
 
             if (NULL == (h_ota->ch_fetch = ofc_Init(h_ota->purl))) {
                 OTA_LOG_ERROR("Initialize fetch module failed");
@@ -470,6 +506,10 @@ int IOT_OTA_Deinit(void *handle)
 
     if (NULL != h_ota->getType) {
         OTA_FREE(h_ota->getType);
+    }
+
+    if (NULL != h_ota->digestsign) {
+        OTA_FREE(h_ota->digestsign);
     }
 
     OTA_FREE(h_ota);
@@ -1073,7 +1113,7 @@ int IOT_OTA_Ioctl(void *handle, IOT_OTA_CmdType_t type, void *buf, size_t buf_le
                         *((uint32_t *)buf) = 0;
                     }
                 }
-                if (0 == strncmp(h_ota->signMethod, "Sha256", strlen(h_ota->signMethod))) {
+                if (0 == strncmp(h_ota->signMethod, "SHA256", strlen(h_ota->signMethod))) {
                     char sha256_str[65];
                     otalib_Sha256Finalize(h_ota->sha256, sha256_str);
                     OTA_LOG_DEBUG("origin=%s, now=%s", h_ota->sign, sha256_str);

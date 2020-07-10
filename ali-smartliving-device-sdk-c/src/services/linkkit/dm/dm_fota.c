@@ -134,7 +134,7 @@ int dm_fota_perform_sync(_OU_ char *output, _IN_ int output_len)
         /* Check If OTA Finished */
         if (IOT_OTA_IsFetchFinish(ota_handle)) {
             uint32_t file_isvalid = 0;
-            IOT_OTA_Ioctl(ota_handle, IOT_OTAG_CHECK_FIRMWARE, &file_isvalid, 4);
+            IOT_OTA_Ioctl(ota_handle, IOT_OTAG_CHECK_CONFIG, &file_isvalid, 4);
             if (file_isvalid == 0) {
                 HAL_Firmware_Persistence_Stop();
                 IOT_OTA_ReportProgress(ota_handle, IOT_OTAP_CHECK_FALIED, NULL);

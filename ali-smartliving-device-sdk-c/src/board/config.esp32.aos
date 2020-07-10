@@ -1,10 +1,10 @@
 CONFIG_ENV_CFLAGS   += \
-    -DBOARD_ESP8266 -u call_user_start \
+    -DBOARD_ESP32 -u call_user_start \
     -fno-inline-functions \
     -ffunction-sections \
     -fdata-sections \
     -mlongcalls \
-    -DESPOS_FOR_ESP8266 -Wl,-static \
+    -DESPOS_FOR_ESP32 -Wl,-static \
     -DXT_USE_THREAD_SAFE_CLIB=0 \
 
 CONFIG_ENV_CFLAGS   += \

@@ -49,6 +49,7 @@ typedef enum {
     ALCS_AUTH_AUTHLISTEMPTY,
     ALCS_AUTH_VERNOTSUPPORT,
     ALCS_AUTH_ILLEGALSIGN,
+    ALCS_AUTH_TIMEOUT = 507,
     ALCS_AUTH_INTERNALERROR=510,
     ALCS_HEART_FAILAUTH,
 } Auth_Result_Code;
@@ -104,8 +105,15 @@ void alcs_auth_subdev_init(CoAPContext *ctx, const char *productKey, const char 
 void alcs_auth_deinit(void);
 
 bool alcs_is_auth(CoAPContext *ctx, AlcsDeviceKey *devKey);
+
+//observe: 0 register
+//observer:1 deregister
+//observer:other 没意义
 int alcs_sendmsg_secure(CoAPContext *ctx, AlcsDeviceKey *devKey, CoAPMessage *message, char observe,
                         CoAPSendMsgHandler handler);
+
+//observe: 0： accept register
+//observe: other: 没意义 
 int alcs_sendrsp_secure(CoAPContext *ctx, AlcsDeviceKey *devKey, CoAPMessage *message, char observe,
                         unsigned short msgid, CoAPLenString *token);
 

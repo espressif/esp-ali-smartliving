@@ -1,0 +1,37 @@
+# Warnings-related flags relevant both for C and C++
+COMMON_WARNING_FLAGS = -Wall \
+	-Wno-error=unused-function \
+	-Wno-error=unused-but-set-variable \
+	-Wno-error=unused-variable \
+	-Wno-error=deprecated-declarations \
+	-Wextra \
+	-Wno-unused-parameter -Wno-sign-compare
+
+# Flags which control code generation and dependency generation, both for C and C++
+COMMON_FLAGS = \
+	-ffunction-sections -fdata-sections \
+	-fstrict-volatile-bitfields \
+	-mlongcalls \
+	-nostdlib
+
+# Optimization flags
+ifdef CONFIG_OPTIMIZATION_LEVEL_DEBUG
+OPTIMIZATION_FLAGS = -Og
+else
+OPTIMIZATION_FLAGS = -Os
+endif
+
+# List of flags to pass to C compiler
+CONFIG_ENV_CFLAGS := $(strip \
+	-std=gnu99 \
+	$(OPTIMIZATION_FLAGS) \
+	$(COMMON_FLAGS) \
+	$(COMMON_WARNING_FLAGS) -Wno-old-style-declaration)
+
+CONFIG_src/ref-impl/tls         :=
+CONFIG_src/ref-impl/hal         :=
+CONFIG_examples                 :=
+CONFIG_tests                    :=
+CONFIG_src/tools/linkkit_tsl_convert :=
+
+CROSS_PREFIX := xtensa-lx106-elf-

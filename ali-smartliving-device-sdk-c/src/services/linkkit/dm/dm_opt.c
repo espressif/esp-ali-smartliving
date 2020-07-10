@@ -2,7 +2,6 @@
  * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
 
-#if !defined(DEVICE_MODEL_RAWDATA_SOLO)
 #include "iotx_dm_internal.h"
 
 static dm_opt_ctx g_dm_opt = {
@@ -80,4 +79,3 @@ int dm_opt_get(dm_opt_t opt, void *data)
 
     return res;
 }
-#endif

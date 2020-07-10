@@ -113,7 +113,12 @@ static localsetup_status __alcs_localsetup_ac_as_save(const char *pk, uint16_t p
     value[1] = secret_len;
     HAL_Snprintf(&value[2], prefix_len + secret_len + 1, "%.*s%.*s", prefix_len, prefix, secret_len, secret);
 
+#ifndef DEVICE_MODEL_GATEWAY
+    __alcs_localsetup_kv_del(key_md5_hexstr);
+    if (ALCS_LOCALSETUP_SUCCESS != __alcs_localsetup_kv_set(ALCS_KEY, value, prefix_len + secret_len + 3, 1)) {
+#else
     if (ALCS_LOCALSETUP_SUCCESS != __alcs_localsetup_kv_set(key_md5_hexstr, value, prefix_len + secret_len + 3, 1)) {
+#endif
         COAP_WRN("ALCS KV Set Prefix And Secret Fail");
         LITE_free(value);
         return ALCS_LOCALSETUP_ERROR;
@@ -143,7 +148,11 @@ localsetup_status alcs_localsetup_ac_as_load(const char *pk, uint16_t pk_len,
     }
 
     //Get Value
+#ifndef DEVICE_MODEL_GATEWAY
+    if (ALCS_LOCALSETUP_SUCCESS != __alcs_localsetup_kv_get(ALCS_KEY, value, &value_len)) {
+#else
     if (ALCS_LOCALSETUP_SUCCESS != __alcs_localsetup_kv_get(key_md5_hexstr, value, &value_len)) {
+#endif
         COAP_WRN("ALCS KV Get local Prefix And Secret Fail");
         return ALCS_LOCALSETUP_ERROR;
     }
@@ -170,7 +179,11 @@ static localsetup_status __alcs_localsetup_ac_as_del(const char *pk, uint16_t pk
         return rt;
     }
 
+#ifndef DEVICE_MODEL_GATEWAY
+    if (ALCS_LOCALSETUP_SUCCESS != __alcs_localsetup_kv_del(ALCS_KEY)) {
+#else
     if (ALCS_LOCALSETUP_SUCCESS != __alcs_localsetup_kv_del(key_md5_hexstr)) {
+#endif
         COAP_ERR("ALCS KV Get local Prefix And Secret Fail");
         return ALCS_LOCALSETUP_ERROR;
     }

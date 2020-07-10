@@ -19,12 +19,19 @@
 #include "alcs_mqtt.h"
 #include "alcs_localsetup.h"
 #include "CoAPPlatform.h"
+#include "alcs_api_internal.h"
+#include "CoAPResource.h"
 
 static iotx_alcs_adapter_t g_alcs_adapter;
 
 static void alcs_heartbeat(void *handle);
 
 static iotx_alcs_adapter_t *__iotx_alcs_get_ctx(void)
+{
+    return &g_alcs_adapter;
+}
+
+iotx_alcs_adapter_t *iotx_alcs_get_ctx(void)
 {
     return &g_alcs_adapter;
 }
@@ -386,17 +393,21 @@ int iotx_alcs_subdev_remove(const char *pk, const char *dn)
     }
 
     HAL_MutexLock(adapter->mutex);
-    res = _iotx_alcs_subdev_list_search(pk, dn, &subdev_item);
-    if (res < SUCCESS_RETURN) {
-        COAP_ERR("No Matched Item");
-        HAL_MutexUnlock(adapter->mutex);
-        return FAIL_RETURN;
+
+    list_for_each_entry(subdev_item, &adapter->alcs_subdev_list, linked_list, iotx_alcs_subdev_item_t) {
+        if (strlen(subdev_item->product_key) == strlen(pk) &&
+            memcmp(subdev_item->product_key, pk, strlen(pk)) == 0 &&
+            strlen(subdev_item->device_name) == strlen(dn) &&
+            memcmp(subdev_item->device_name, dn, strlen(dn)) == 0) {
+                char prefix[ALCS_MQTT_PREFIX_MAX_LEN] = {0};
+                char secret[ALCS_MQTT_SECRET_MAX_LEN] = {0};
+                alcs_mqtt_prefix_secret_load(pk, strlen(pk), dn, strlen(dn), prefix, secret);
+                alcs_mqtt_remove_srv_key(prefix);
+                list_del(&subdev_item->linked_list);
+                LITE_free(subdev_item);
+        }
     }
-
-    list_del(&subdev_item->linked_list);
     HAL_MutexUnlock(adapter->mutex);
-
-    LITE_free(subdev_item);
 
     return SUCCESS_RETURN;
 }
@@ -550,11 +561,14 @@ int iotx_alcs_yield(void *handle)
 #ifdef DEVICE_MODEL_GATEWAY 
     iotx_alcs_subdev_stage_check();
 #endif
+
+    iotx_alcs_get_prefixkey();
     return res;
 }
 
 int iotx_alcs_send(void *handle, iotx_alcs_msg_t *msg)
 {
+#ifdef ALCS_CLIENT_ENABLED
     int res = 0;
     iotx_alcs_adapter_t *adapter = (iotx_alcs_adapter_t *)handle;
     CoAPMessage coap_msg;
@@ -661,7 +675,7 @@ int iotx_alcs_send(void *handle, iotx_alcs_msg_t *msg)
     //list_add_tail(&adapter->alcs_send_list, &alcs_send_msg->linked_list);
     list_add_tail(&alcs_send_msg->linked_list, &adapter->alcs_send_list);
     HAL_MutexUnlock(adapter->mutex);
-
+#endif
     return SUCCESS_RETURN;
 }
 
@@ -739,16 +753,34 @@ int iotx_alcs_send_Response(void *handle, iotx_alcs_msg_t *msg, uint8_t token_le
     devKey.pk = productKey;
     devKey.dn = deviceName;
 
+
     if (alcs_resource_need_auth(adapter->coap_ctx, msg->uri)) {
         res = alcs_sendrsp_secure(adapter->coap_ctx, &devKey, &coap_msg, 0, 0, &token_payload);
     } else {
+#ifdef ALCS_SERVER_ENABLED
+        extern const char DM_URI_DEV_CORE_SERVICE_DEV[];
+        if (strcmp(msg->uri, DM_URI_DEV_CORE_SERVICE_DEV) == 0) {
+            char ck[PK_DN_CHECKSUM_LEN] = {0};
+            char path[100] = {0};
+            HAL_GetProductKey(productKey);
+            HAL_GetDeviceName(deviceName);
+            snprintf (path, sizeof(path), "%s%s", productKey, deviceName);
+            CoAPPathMD5_sum (path, strlen(path), ck, PK_DN_CHECKSUM_LEN);
+            struct list_head* sessions1 = get_svr_session_list();
+            session_item* node1 = get_session_by_checksum (sessions1, &network_addr, ck);
+            if (node1 && node1->sessionId) {
+                node1->heart_time = HAL_UptimeMs();
+                COAP_INFO("%s, %p", path, node1);
+            }
+        }
+#endif
         res = alcs_sendrsp(adapter->coap_ctx, &network_addr, &coap_msg, 0, 0, &token_payload);
     }
 
     alcs_msg_deinit(&coap_msg);
 
     if (res != COAP_SUCCESS) {
-        COAP_ERR("ALCS Message Send Message Failed");
+        COAP_ERR("ALCS Message Send Failed %d", res);
         return FAIL_RETURN;
     }
 
@@ -822,12 +854,15 @@ int iotx_alcs_observe_notify(void *handle, const char *uri, uint32_t payload_len
     return SUCCESS_RETURN;
 }
 
-int iotx_alcs_unregister_resource(void *handle, char *uri)
+
+#ifdef DEVICE_MODEL_GATEWAY 
+int iotx_alcs_unregister_resource(void* handle, const char *uri)
 {
+    iotx_alcs_adapter_t *adapter = (iotx_alcs_adapter_t *)handle;
+    alcs_resource_unregister_secure(adapter->coap_ctx, uri);
     return SUCCESS_RETURN;
 }
 
-#ifdef DEVICE_MODEL_GATEWAY 
 int iotx_alcs_add_sub_device(void *handle, const char *pk, const char *dn)
 {
     if (handle == NULL || pk == NULL || strlen(pk) >= PRODUCT_KEY_MAXLEN ||
@@ -871,6 +906,7 @@ int iotx_alcs_add_sub_device(void *handle, const char *pk, const char *dn)
 
     HAL_MutexLock(adapter->mutex);
     list_add_tail(&subdev_item->linked_list, &adapter->alcs_subdev_list);
+    // COAP_INFO("point=%x",&subdev_item);
     HAL_MutexUnlock(adapter->mutex);
 
     alcs_localsetup_add_sub_device(adapter, subdev_item->product_key, subdev_item->device_name);
@@ -883,12 +919,12 @@ int iotx_alcs_add_sub_device(void *handle, const char *pk, const char *dn)
     if (res == SUCCESS_RETURN) {
         memcpy(subdev_item->prefix, prefix, strlen(prefix));
         memcpy(subdev_item->secret, secret, strlen(secret));
+        // COAP_INFO("prefix=%s",prefix);
         alcs_mqtt_add_srv_key(prefix, secret);
     }
 
     //Get Prefix And Secret From Cloud
     alcs_mqtt_subdev_prefix_get(pk, dn);
-
     return SUCCESS_RETURN;
 }
 
@@ -905,7 +941,7 @@ int iotx_alcs_remove_sub_device(void *handle, const char *pk, const char *dn)
     if (res != SUCCESS_RETURN) {
         return FAIL_RETURN;
     }
-
+    alcs_resource_unregister(handle, pk, dn);
     //Remove Subdev Item From KV
     alcs_mqtt_prefix_secret_del(pk, strlen(pk), dn, strlen(dn));
     return SUCCESS_RETURN;

@@ -83,6 +83,7 @@ typedef enum {
     IOTX_DM_EVENT_TOPO_DELETE_REPLY,
     IOTX_DM_EVENT_SUBDEV_RESET_REPLY,
     IOTX_DM_EVENT_TOPO_GET_REPLY,
+    IOTX_DM_EVENT_TOPO_CHANGE,
     IOTX_DM_EVENT_TOPO_ADD_NOTIFY_REPLY,
     IOTX_DM_EVENT_EVENT_PROPERTY_POST_REPLY,
     IOTX_DM_EVENT_EVENT_SPECIFIC_POST_REPLY,
@@ -188,13 +189,14 @@ void iotx_dm_dispatch(void);
 
 int iotx_dm_post_rawdata(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
 
-#if !defined(DEVICE_MODEL_RAWDATA_SOLO)
 int iotx_dm_set_opt(int opt, void *data);
 int iotx_dm_get_opt(int opt, void *data);
+#if !defined(DEVICE_MODEL_RAWDATA_SOLO)
 #ifdef LOG_REPORT_TO_CLOUD
     int iotx_dm_log_post(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
 #endif
 int iotx_dm_post_property(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
+int iotx_dm_post_property_to(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len, _IN_ int sendto);
 int iotx_dm_event_notify_reply(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
 int iotx_dm_post_event(_IN_ int devid, _IN_ char *identifier, _IN_ int identifier_len, _IN_ char *payload,
                        _IN_ int payload_len);
@@ -210,13 +212,13 @@ int iotx_dm_send_service_response(_IN_ int devid, _IN_ char *msgid, _IN_ int msg
 int iotx_dm_send_property_get_response(_IN_ int devid, _IN_ char *msgid, _IN_ int msgid_len,
                                        _IN_ iotx_dm_error_code_t code,
                                        _IN_ char *payload, _IN_ int payload_len, _IN_ void *ctx);
-int iotx_dm_send_rrpc_response(_IN_ int devid, _IN_ char *msgid, _IN_ int msgid_len, _IN_ iotx_dm_error_code_t code,
-                               _IN_ char *rrpcid, _IN_ int rrpcid_len, _IN_ char *payload, _IN_ int payload_len);
 int iotx_dm_deviceinfo_update(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
 int iotx_dm_deviceinfo_delete(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
-int iotx_dm_qurey_ntp(void);
-int iotx_dm_send_aos_active(int devid);
 #endif
+
+int iotx_dm_send_rrpc_response(_IN_ int devid, _IN_ char *msgid, _IN_ int msgid_len, _IN_ iotx_dm_error_code_t code,
+                               _IN_ char *rrpcid, _IN_ int rrpcid_len, _IN_ char *payload, _IN_ int payload_len);
+int iotx_dm_qurey_ntp(void);
 
 #ifdef DM_UNIFIED_SERVICE_POST
 int iotx_dm_unified_service_post(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
@@ -249,10 +251,11 @@ int iotx_dm_subdev_topo_del(_IN_ int devid);
 int iotx_dm_subdev_reset(_IN_ int devid);
 int iotx_dm_subdev_login(_IN_ int devid);
 int iotx_dm_subdev_logout(_IN_ int devid);
-#ifdef DM_SUBDEV_NEW_CONNECT
-int iotx_dm_subdev_connect(_IN_ int devid);
-int iotx_dm_all_subdev_connect(_IN_ int devid);
-#endif
+
+int iotx_dm_subdev_connect(_IN_ int devid, _IN_ iotx_linkkit_dev_meta_info_t *subdev_list, _IN_ int subdev_total);
+int iotx_dm_multi_subdev_connect(_IN_ int devid, _IN_ iotx_linkkit_dev_meta_info_t *subdev_list, _IN_ int subdev_total);
+int iotx_dm_subdev_connect_reply(int devid, char *payload, int payload_len);
+
 int iotx_dm_get_device_type(_IN_ int devid, _OU_ int *type);
 int iotx_dm_get_device_avail_status(_IN_ int devid, _OU_ iotx_dm_dev_avail_t *status);
 int iotx_dm_get_device_status(_IN_ int devid, _OU_ iotx_dm_dev_status_t *status);

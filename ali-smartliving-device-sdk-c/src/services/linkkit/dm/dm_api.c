@@ -50,6 +50,10 @@ int iotx_dm_open(void)
         return DM_MEMORY_NOT_ENOUGH;
     }
 
+#ifdef MQTT_SHADOW
+    dm_shadow_init();
+#endif
+
 #if defined(OTA_ENABLED) && !defined(BUILD_AOS)
     /* DM OTA Module Init */
     res = dm_ota_init();
@@ -125,6 +129,10 @@ ERROR:
     dm_ota_deinit();
 #endif
 
+#ifdef MQTT_SHADOW
+    dm_shadow_deinit();
+#endif
+
     if (ctx->mutex) {
         HAL_MutexDestroy(ctx->mutex);
     }
@@ -150,6 +158,13 @@ int iotx_dm_connect(_IN_ iotx_dm_init_params_t *init_params)
         return FAIL_RETURN;
     }
 
+#ifdef MQTT_SHADOW
+    dm_shadow_connect();
+#ifdef CLOUD_OFFLINE_RESET
+    offline_reset_init();
+#endif
+#endif
+
 #ifdef ALCS_ENABLED
     /* DM Connect Local */
     do{
@@ -163,6 +178,10 @@ int iotx_dm_connect(_IN_ iotx_dm_init_params_t *init_params)
     // if (res != SUCCESS_RETURN) {
     //     return FAIL_RETURN;
     // }
+#endif
+
+#ifdef MQTT_SHADOW
+    dm_shadow_update();
 #endif
 
     return SUCCESS_RETURN;
@@ -214,6 +233,7 @@ int iotx_dm_subscribe(_IN_ int devid)
         return res;
     }
 
+
     _dm_api_unlock();
     dm_log_info("Devid %d Sub Completed", devid);
 
@@ -223,6 +243,13 @@ int iotx_dm_subscribe(_IN_ int devid)
 int iotx_dm_close(void)
 {
     dm_api_ctx_t *ctx = _dm_api_get_ctx();
+
+#ifdef MQTT_SHADOW
+#ifdef CLOUD_OFFLINE_RESET
+    offline_reset_deinit();
+#endif
+    dm_shadow_deinit();
+#endif
 
     dm_client_close();
 #ifdef ALCS_ENABLED
@@ -256,6 +283,11 @@ int iotx_dm_yield(int timeout_ms)
     }
 
     dm_client_yield(timeout_ms);
+
+#ifdef MQTT_SHADOW
+    dm_shadow_yield(timeout_ms);
+#endif
+
 #ifdef ALCS_ENABLED
     dm_server_yield();
 #endif
@@ -330,6 +362,22 @@ int iotx_dm_get_opt(int opt, void *data)
     return dm_opt_get(opt, data);
 }
 
+int iotx_dm_post_property_to(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len, _IN_ int sendto)
+{
+    int res = 0;
+
+    _dm_api_lock();
+
+    res = dm_mgr_upstream_thing_property_post_to(devid, payload, payload_len, sendto);
+    if (res < SUCCESS_RETURN) {
+        _dm_api_unlock();
+        return FAIL_RETURN;
+    }
+
+    _dm_api_unlock();
+    return res;
+}
+
 int iotx_dm_post_property(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len)
 {
     int res = 0;
@@ -363,22 +411,6 @@ int iotx_dm_unified_service_post(_IN_ int devid, _IN_ char *payload, _IN_ int pa
     return res;
 }
 #endif
-
-int iotx_dm_event_notify_reply(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len)
-{
-    int res = 0;
-
-    _dm_api_lock();
-
-    res = dm_mgr_upstream_thing_event_notify_reply(devid, payload, payload_len);
-    if (res < SUCCESS_RETURN) {
-        _dm_api_unlock();
-        return FAIL_RETURN;
-    }
-
-    _dm_api_unlock();
-    return res;
-}
 
 #ifdef LOG_REPORT_TO_CLOUD
 int iotx_dm_log_post(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len)
@@ -443,14 +475,18 @@ int iotx_dm_send_service_response(_IN_ int devid, _IN_ char *msgid, _IN_ int msg
         return DM_INVALID_PARAMETER;
     }
 
-    _dm_api_lock();
+    if (ctx == NULL) {
+        _dm_api_lock();
+    }
 
     dm_log_debug("Current Service Response Payload, Length: %d, Payload: %.*s", payload_len, payload_len, payload);
 
     res = dm_mgr_upstream_thing_service_response(devid, msgid, msgid_len, code, identifier, identifier_len, payload,
             payload_len, ctx);
 
-    _dm_api_unlock();
+    if (ctx == NULL) {
+        _dm_api_unlock();
+    }
     return res;
 }
 #else
@@ -531,6 +567,23 @@ int iotx_dm_deviceinfo_delete(_IN_ int devid, _IN_ char *payload, _IN_ int paylo
     _dm_api_unlock();
     return res;
 }
+#endif
+
+int iotx_dm_event_notify_reply(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len)
+{
+    int res = 0;
+
+    _dm_api_lock();
+
+    res = dm_mgr_upstream_thing_event_notify_reply(devid, payload, payload_len);
+    if (res < SUCCESS_RETURN) {
+        _dm_api_unlock();
+        return FAIL_RETURN;
+    }
+
+    _dm_api_unlock();
+    return res;
+}
 
 int iotx_dm_qurey_ntp(void)
 {
@@ -546,41 +599,6 @@ int iotx_dm_qurey_ntp(void)
 
     _dm_api_unlock();
     return res;
-}
-
-int iotx_dm_send_aos_active(int devid)
-{
-    int active_param_len;
-    int i;
-    char *active_param;
-    char aos_active_data[AOS_ACTIVE_INFO_LEN];
-    char subdev_aos_verson[VERSION_NUM_SIZE] = {0};
-    char subdev_mac_num[MAC_ADDRESS_SIZE] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, ACTIVE_SUBDEV, ACTIVE_LINKKIT_OTHERS};
-    char subdev_chip_code[CHIP_CODE_SIZE] = {0x01, 0x02, 0x03, 0x04};
-    char random_num[RANDOM_NUM_SIZE];
-    const char *fmt =
-                "[{\"attrKey\":\"SYS_ALIOS_ACTIVATION\",\"attrValue\":\"%s\",\"domain\":\"SYSTEM\"}]";
-
-    aos_get_version_hex((unsigned char *)subdev_aos_verson);
-
-    HAL_Srandom(HAL_UptimeMs());
-    for (i = 0; i < 4; i ++) {
-        random_num[i] = (char)HAL_Random(0xFF);
-    }
-    aos_get_version_info((unsigned char *)subdev_aos_verson, (unsigned char *)random_num, (unsigned char *)subdev_mac_num,
-                         (unsigned char *)subdev_chip_code, (unsigned char *)aos_active_data, AOS_ACTIVE_INFO_LEN);
-    memcpy(aos_active_data + 40, "1111111111222222222233333333334444444444", 40);
-
-    active_param_len = strlen(fmt) + strlen(aos_active_data) + 1;
-    active_param = DM_malloc(active_param_len);
-    if (active_param == NULL) {
-        return FAIL_RETURN;
-    }
-    HAL_Snprintf(active_param, active_param_len, fmt, aos_active_data);
-    iotx_dm_deviceinfo_update(devid, active_param, active_param_len);
-    DM_free(active_param);
-
-    return SUCCESS_RETURN;
 }
 
 int iotx_dm_send_rrpc_response(_IN_ int devid, _IN_ char *msgid, _IN_ int msgid_len, _IN_ iotx_dm_error_code_t code,
@@ -600,7 +618,6 @@ int iotx_dm_send_rrpc_response(_IN_ int devid, _IN_ char *msgid, _IN_ int msgid_
     _dm_api_unlock();
     return res;
 }
-#endif
 
 int iotx_dm_cota_perform_sync(_OU_ char *buffer, _IN_ int buffer_len)
 {
@@ -766,14 +783,13 @@ int iotx_dm_subdev_number(void)
     return number;
 }
 
-#ifdef DM_SUBDEV_NEW_CONNECT
-int iotx_dm_subdev_connect(_IN_ int devid)
+int iotx_dm_subdev_connect(_IN_ int devid, _IN_ iotx_linkkit_dev_meta_info_t *subdev_list, _IN_ int subdev_total)
 {
     int res = 0;
     char *p_subdev_info = NULL;
     int subdev_info_len = 0;
     const char sign_source_fmt[] = "clientId%sdeviceName%sproductKey%stimestamp%s";
-    const char subdev_info_fmt[] = "[{\"ProductKey\":\"%s\",\"DeviceName\":\"%s\",\"clientId\":\"%s\",\"timestamp\":\"%s\",\"signMethod\":\"%s\",\"sign\":\"%s\",\"cleanSession\":\"%s\"}]";
+    const char subdev_info_fmt[] = "[{\"productKey\":\"%s\",\"deviceName\":\"%s\",\"clientId\":\"%s\",\"timestamp\":\"%s\",\"signMethod\":\"%s\",\"sign\":\"%s\",\"cleanSession\":\"%s\"}]";
     dm_mgr_dev_node_t *search_node = NULL;
 
     char timestamp[DM_UTILS_UINT64_STRLEN] = {0};
@@ -783,6 +799,7 @@ int iotx_dm_subdev_connect(_IN_ int devid)
     int sign_source_len = 0;
     char sign[64] = {0};
     char *clean_session = "true";
+    char device_secret[DEVICE_SECRET_MAXLEN] = {0};
 
     if (devid < 0) {
         return DM_INVALID_PARAMETER;
@@ -796,15 +813,14 @@ int iotx_dm_subdev_connect(_IN_ int devid)
     }
 
     if ((strlen(search_node->product_key) <= 0)
-        || (strlen(search_node->device_name) <= 0)
-        || (strlen(search_node->device_secret) <= 0)) {
+        || (strlen(search_node->device_name) <= 0)) {
         _dm_api_unlock();
         dm_log_err("dev info err");
         return FAIL_RETURN;
     }
 
     /* TimeStamp */
-    HAL_Snprintf(timestamp, DM_UTILS_UINT64_STRLEN, "%llu", HAL_UptimeMs());
+    HAL_Snprintf(timestamp, DM_UTILS_UINT64_STRLEN, "%d", (unsigned)HAL_UptimeMs());
     /* dm_log_debug("Time Stamp: %s", timestamp); */
 
     /* Client ID */
@@ -821,8 +837,9 @@ int iotx_dm_subdev_connect(_IN_ int devid)
     HAL_Snprintf(sign_source, sign_source_len, sign_source_fmt, client_id,
                  search_node->device_name, search_node->product_key, timestamp);
 
-
-    utils_hmac_sha1(sign_source, strlen(sign_source), sign, search_node->device_secret, strlen(search_node->device_secret));
+    memset(device_secret, 0, DEVICE_SECRET_MAXLEN);
+    HAL_GetDeviceSecret(device_secret); //Use gateway DS to signature
+    utils_hmac_sha1(sign_source, strlen(sign_source), sign, device_secret, strlen(device_secret));
 
     DM_free(sign_source);
 
@@ -844,7 +861,24 @@ int iotx_dm_subdev_connect(_IN_ int devid)
     return res;
 }
 
-int iotx_dm_all_subdev_connect(_IN_ int devid)
+int iotx_dm_multi_subdev_connect(_IN_ int devid, _IN_ iotx_linkkit_dev_meta_info_t *subdev_list, _IN_ int subdev_total)
+{
+    int res = 0;
+
+    if (!subdev_list || subdev_total < 1) {
+        return DM_INVALID_PARAMETER;
+    }
+
+    _dm_api_lock();
+
+    res = dm_mgr_multi_subdev_connect(devid, subdev_list, subdev_total);
+
+    _dm_api_unlock();
+
+    return res;
+}
+
+int iotx_dm_subdev_connect_reply(int devid, char *payload, int payload_len)
 {
     int res = 0;
 
@@ -854,13 +888,12 @@ int iotx_dm_all_subdev_connect(_IN_ int devid)
 
     _dm_api_lock();
 
-    res = dm_mgr_all_subdev_connect(devid);
+    res = dm_mgr_subdev_connect_reply(payload, payload_len);
 
     _dm_api_unlock();
 
     return res;
 }
-#endif
 
 int iotx_dm_subdev_register(_IN_ int devid)
 {

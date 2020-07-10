@@ -35,6 +35,11 @@
     #include "iotx_alcs.h"
 #endif
 
+#ifdef MQTT_SHADOW
+#include "dm_shadow.h"
+#include "awss_reset.h"
+#endif
+
 /* DM Header File */
 #include "iotx_dm_config.h"
 #include "iotx_dm.h"

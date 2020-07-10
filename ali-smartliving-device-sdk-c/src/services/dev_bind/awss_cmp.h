@@ -65,12 +65,11 @@ void *awss_cpy_coap_ctx(void *request, void *remote, char mcast);
 char *awss_cmp_get_coap_payload(void *request, int *payload_len);
 uint8_t awss_cmp_get_coap_code(void *request);
 
-int online_dev_bind_monitor(void *ctx, void *resource, void *remote, void *request);
-
-void awss_enrollee_checkin(void *pcontext, void *pclient, void *msg);
+void awss_registrar_enr_found_reply(void *pcontext, void *pclient, void *msg);
+void awss_registrar_cloud_checkin(void *pcontext, void *pclient, void *msg);
+void awss_registrar_enr_cipher_reply(void *pcontext, void *pclient, void *msg);
+int awss_registrar_enr_bind_monitor(void *ctx, void *resource, void *remote, void *request);
 void awss_online_switchap(void *pcontext, void *pclient, void *msg);
-void awss_report_enrollee_reply(void *pcontext, void *pclient, void *msg);
-void awss_get_cipher_reply(void *pcontext, void *pclient, void *msg);
 void awss_report_token_reply(void *pcontext, void *pclient, void *msg);
 int awss_cmp_mqtt_get_payload(void *mesg, char **payload, uint32_t *playload_len);
 

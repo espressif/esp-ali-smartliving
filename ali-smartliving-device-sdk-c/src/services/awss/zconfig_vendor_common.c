@@ -36,6 +36,7 @@ enum {
     AWS_STOPPED
 };
 
+
 struct aws_info {
     uint8_t state;
 
@@ -50,6 +51,7 @@ struct aws_info {
 
     uint32_t chn_timestamp;/* channel start time */
     uint32_t start_timestamp;/* aws start time */
+    uint32_t p2p_received_timestamp ;/* aws start time */
 } *aws_info;
 
 #define aws_state                    (aws_info->state)
@@ -60,16 +62,13 @@ struct aws_info {
 #define aws_chn_timestamp            (aws_info->chn_timestamp)
 #define aws_start_timestamp          (aws_info->start_timestamp)
 #define aws_stop                     (aws_info->stop)
+#define aws_p2p_received_timestamp   (aws_info->p2p_received_timestamp)
 
-#define aws_channel_lock_timeout_ms  (8 * 1000)
+#define aws_channel_lock_timeout_ms  (4 * 1000)
 
 #ifdef AWSS_BATCH_DEVAP_ENABLE
 extern uint8_t g_fixed_chan;
 #endif
-
-static const uint8_t aws_fixed_scanning_channels[] = {
-    1, 6, 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
-};
 
 static void *rescan_timer = NULL;
 
@@ -84,12 +83,12 @@ static uint8_t rescan_available = 0;
  */
 uint8_t aws_result_ssid[ZC_MAX_SSID_LEN + 1];
 uint8_t aws_result_passwd[ZC_MAX_PASSWD_LEN + 1];
-uint8_t aws_result_token[ZC_MAX_TOKEN_LEN];/* bind token */
 uint8_t aws_result_bssid[ETH_ALEN];/* mac addr */
+uint8_t aws_result_token[ZC_MAX_TOKEN_LEN];/* bind token */
+uint8_t aws_result_token_type = 0;
 uint8_t aws_result_channel = 0;
 uint8_t aws_result_encry;
 uint8_t aws_result_auth;
-
 int aws_80211_frame_handler(char *, int, enum AWSS_LINK_TYPE, int, signed char);
 
 uint8_t zconfig_get_lock_chn(void)
@@ -120,7 +119,8 @@ void zconfig_channel_locked_callback(uint8_t primary_channel,
 }
 
 void zconfig_got_ssid_passwd_callback(uint8_t *ssid, uint8_t *passwd,
-                                      uint8_t *bssid, uint8_t *token, uint8_t auth, uint8_t encry, uint8_t channel)
+                                      uint8_t *bssid, uint8_t *token, 
+                                      uint8_t auth, uint8_t encry, uint8_t channel, uint8_t token_type)
 {
     if (bssid) {
         dump_awss_status(STATE_WIFI_PASSWD_DECODE_SUCCESS, "ssid:%s, bssid:%02x%02x%02x%02x%02x%02x, %d",
@@ -130,10 +130,11 @@ void zconfig_got_ssid_passwd_callback(uint8_t *ssid, uint8_t *passwd,
         dump_awss_status(STATE_WIFI_PASSWD_DECODE_SUCCESS, "ssid:%s, bssid:--, %d",
                          ssid, channel);
     }
+
     if (token) {
         memcpy(aws_result_token, token, ZC_MAX_TOKEN_LEN);
     }
-
+    aws_result_token_type = token_type;
     memset(aws_result_ssid, 0, sizeof(aws_result_ssid));
     memset(aws_result_passwd, 0, sizeof(aws_result_passwd));
     strncpy((char *)aws_result_ssid, (const char *)ssid, ZC_MAX_SSID_LEN - 1);
@@ -152,6 +153,9 @@ void zconfig_got_ssid_passwd_callback(uint8_t *ssid, uint8_t *passwd,
     #ifdef DEV_STATEMACHINE_ENABLE
     dev_awss_state_set(AWSS_PATTERN_DEV_AP_CONFIG, AWSS_STATE_SSID_GOT);
     #endif
+
+    //TODO:Please change it when smartconfig can got regionid
+    iotx_guider_set_dynamic_region(IOTX_CLOUD_REGION_INVALID);
 }
 
 uint8_t aws_next_channel(void)
@@ -300,7 +304,7 @@ int aws_is_chnscan_timeout(void)
 
 int zconfig_add_active_channel(int channel)
 {
-    int fixed_channel_nums = sizeof(aws_fixed_scanning_channels);
+    int fixed_channel_nums = sizeof(wlan_fixed_scanning_channels);
 
     if (!zconfig_is_valid_channel(channel)) {
         return -1;
@@ -317,7 +321,7 @@ int zconfig_add_active_channel(int channel)
 int aws_force_scanning(void)
 {
 #ifdef WITH_AUTH_ENCRY
-    int timeout = sizeof(aws_fixed_scanning_channels) / sizeof(uint8_t)
+    int timeout = sizeof(wlan_fixed_scanning_channels) / sizeof(uint8_t)
                   * os_awss_get_timeout_interval_ms() * 2; /* 2 round */
 
     /* force scanning useful only when aws is success */
@@ -346,6 +350,52 @@ int aws_force_scanning(void)
     return 0;
 #endif
 }
+
+#ifdef AWSS_SUPPORT_SMARTCONFIG_MCAST
+int wait_for_mcast_done = 0;
+int delay_p2p()
+{
+#define MCAST_LOCK_TIMEOUT  5000
+#define MCAST_DELAY_TIMEOUT 30000
+    extern int mcast_locked_channel;
+    /* 1. if p2p does not got anything, do nothing ---- return 0 */
+    if (0 == zc_got_ssid_passwd_from_p2p) {
+        return 0;
+    }
+
+    /* record the 1st time p2p received */
+    if (0 == aws_p2p_received_timestamp) {
+        aws_p2p_received_timestamp = os_get_time_ms();
+    }
+
+    /* check if we got mcast packs in 5s afterwards */
+    if (time_elapsed_ms_since(aws_p2p_received_timestamp) < MCAST_LOCK_TIMEOUT) {
+       awss_debug("p2p received time is %u, elapsed is %u", aws_p2p_received_timestamp, time_elapsed_ms_since(aws_p2p_received_timestamp));
+        if (-1 != mcast_locked_channel) {
+            awss_debug("p2p wait for mcast");
+            wait_for_mcast_done = 1;
+        }
+        return 0;
+    }
+
+    /* 2.if p2p got ssid/passwd, but failed to recived mcast in 5s, connnect ap directly */
+    if (0 == wait_for_mcast_done) {
+        zconfig_set_state(STATE_RCV_DONE, 1, 1);
+        awss_debug("switch to p2p in case 2\n");
+        return 1;
+    }
+
+    /* 3.if p2p got ssid/passwd, and recived mcast in 5s, wait for 30s, in 30s do not triger p2p */
+    if (time_elapsed_ms_since(aws_p2p_received_timestamp) < MCAST_LOCK_TIMEOUT + MCAST_DELAY_TIMEOUT) {
+        return 0;
+    }
+
+    /* 4.if p2p got ssid/passwd, and recived mcast in 5s, wait for 30s, faild to to done mcast, connect directly */
+    zconfig_set_state(STATE_RCV_DONE, 1, 1);
+    awss_debug("switch to p2p in case 4\n");
+    return 1;
+}
+#endif
 
 /*
  * channel scanning/re-scanning control
@@ -379,12 +429,17 @@ rescanning:
                 break;
         }
 
-        if (aws_stop == AWS_STOPPING) { // interrupt by user
+        if (aws_stop == AWS_STOPPING) { /* interrupt by user */
             goto timeout_scanning;
         }
- 
-        if (aws_state != AWS_SCANNING) { // channel is locked, don't need to tx probe req
-             break;
+#ifdef AWSS_SUPPORT_SMARTCONFIG_MCAST
+        if (delay_p2p()) {
+            goto success;
+        }
+#endif
+
+        if (aws_state != AWS_SCANNING) {
+            break;
         }
 #ifdef AWSS_SUPPORT_SMARTCONFIG_NOTIFY
         int interval = (os_awss_get_channelscan_interval_ms() + 2) / 4;
@@ -398,7 +453,7 @@ rescanning:
         /* 80211 frame handled by callback */
         os_msleep(interval);
 #ifndef AWSS_DISABLE_ENROLLEE
-        awss_broadcast_enrollee_info();
+        awss_enrollee_broadcast_info();
 #endif
         os_msleep(interval);
 #ifdef AWSS_SUPPORT_ADHA
@@ -430,10 +485,17 @@ rescanning:
     while (aws_state != AWS_SUCCESS) {
         /* 80211 frame handled by callback */
         os_msleep(300);
+#ifdef AWSS_SUPPORT_SMARTCONFIG_MCAST
+        if (delay_p2p()) {
+            goto success;
+        }
+#endif
 
         if (aws_stop == AWS_STOPPING) {
             goto timeout_recving;
         }
+
+
 #ifdef AWSS_SUPPORT_APLIST
         aws_try_adjust_chan();
 #endif
@@ -443,6 +505,11 @@ rescanning:
 
         if (aws_state == AWS_SCANNING) {
             awss_debug("channel rescanning...\n");
+            if (zconfig_data != NULL) {
+                void *temp_mutex = zc_mutex;
+                memset(zconfig_data, 0, sizeof(struct zconfig_data));
+                zc_mutex = temp_mutex;
+            }
             goto rescanning;
         }
     }
@@ -456,6 +523,12 @@ timeout_scanning:
     awss_debug("aws timeout scanning!\r\n");
 timeout_recving:
     awss_debug("aws timeout recving!\r\n");
+#ifdef AWSS_SUPPORT_SMARTCONFIG_MCAST
+    if (delay_p2p()) {
+        goto success;
+    }
+#endif
+
     do {
         if (aws_stop == AWS_STOPPING) {
             break;
@@ -477,7 +550,7 @@ timeout_recving:
         rescan_available = 0;
     } while (0);
 
-    if (aws_stop == AWS_STOPPING) {  // interrupt by user
+    if (aws_stop == AWS_STOPPING) {  /* interrupt by user */
         aws_stop = AWS_STOPPED;
         goto success;
     }
@@ -539,9 +612,7 @@ int aws_80211_frame_handler(char *buf, int length, enum AWSS_LINK_TYPE link_type
             case PKG_START_FRAME:
             case PKG_DATA_FRAME:
             case PKG_GROUP_FRAME:
-#ifdef AWSS_SUPPORT_SMARTCONFIG_MCAST
             case PKG_MCAST_FRAME:
-#endif
                 lock_start = os_get_time_ms();
                 break;
             default:
@@ -567,8 +638,8 @@ void aws_start(char *pk, char *dn, char *ds, char *ps)
 
     /* start from -1 */
     aws_chn_index = 0xff;
-    memcpy(aws_chn_list, aws_fixed_scanning_channels,
-           sizeof(aws_fixed_scanning_channels));
+    memcpy(aws_chn_list, wlan_fixed_scanning_channels,
+           sizeof(wlan_fixed_scanning_channels));
 
     memset(aws_result_ssid, 0, sizeof(aws_result_ssid));
     memset(aws_result_passwd, 0, sizeof(aws_result_passwd));
@@ -585,32 +656,11 @@ void aws_start(char *pk, char *dn, char *ds, char *ps)
     os_awss_open_monitor(aws_80211_frame_handler);
 
 #ifndef AWSS_DISABLE_ENROLLEE
-    awss_init_enrollee_info();
+    awss_enrollee_init_info();
 #endif
 
     aws_main_thread_func();
 }
-
-#if defined(AWSS_SUPPORT_SMARTCONFIG_MCAST) || defined(AWSS_SUPPORT_SMARTCONFIG)
-const uint8_t zconfig_fixed_offset[ZC_ENC_TYPE_MAX + 1][2] = {
-    {  /* open, none, ip(20) + udp(8) + 8(LLC) */
-        36, 36
-    },
-    {  /* wep, + iv(4) + data + ICV(4) */
-        44, 44  /* feixun, wep64(10byte), wep128(26byte) */
-    },
-    {  /* tkip, + iv/keyID(4) + Ext IV(4) + data + MIC(8) + ICV(4) */
-        56, 56  /* tkip(10byte, 20byte), wpa2+tkip(20byte) */
-    },
-    {  /* aes, + ccmp header(8) + data + MIC(8) + ICV(4) */
-        52, 52
-    },
-    {  /* tkip-aes */
-        56, 52  /* fromDs==tkip,toDs==aes */
-    }
-};
-#endif
-
 
 static void *aws_mutex = NULL;
 
@@ -624,10 +674,12 @@ void aws_destroy(void)
     }
 
     if (aws_info == NULL) {
+        HAL_MutexUnlock(aws_mutex);
         return;
     }
 
     if (aws_stop == AWS_STOPPED) {
+        HAL_MutexUnlock(aws_mutex);
         return;
     }
 
@@ -645,10 +697,10 @@ void aws_destroy(void)
 
     os_free(aws_info);
     aws_info = NULL;
-
 #ifndef AWSS_DISABLE_ENROLLEE
-    awss_destroy_enrollee_info();
+    awss_enrollee_destroy_info();
 #endif
+
     if (aws_mutex) {
         HAL_MutexUnlock(aws_mutex);
     }
@@ -662,9 +714,8 @@ void aws_release_mutex()
     }
 }
 
-
 int aws_get_ssid_passwd(char *ssid, char *passwd, uint8_t *bssid, uint8_t *token,
-                        char *auth, char *encry, uint8_t *channel)
+                        char *auth, char *encry, uint8_t *channel, uint8_t *token_type)
 {
     if (aws_state != AWS_SUCCESS) {
         return 0;
@@ -690,8 +741,31 @@ int aws_get_ssid_passwd(char *ssid, char *passwd, uint8_t *bssid, uint8_t *token
     if (channel) {
         *channel = aws_result_channel;
     }
+    if (token_type) {
+        *token_type = aws_result_token_type;
+    }
     return 1;
 }
+
+#if defined(AWSS_SUPPORT_SMARTCONFIG_MCAST) || defined(AWSS_SUPPORT_SMARTCONFIG)
+const uint8_t zconfig_fixed_offset[ZC_ENC_TYPE_MAX + 1][2] = {
+    {  /* open, none, ip(20) + udp(8) + 8(LLC) */
+        36, 36
+    },
+    {  /* wep, + iv(4) + data + ICV(4) */
+        44, 44  /* feixun, wep64(10byte), wep128(26byte) */
+    },
+    {  /* tkip, + iv/keyID(4) + Ext IV(4) + data + MIC(8) + ICV(4) */
+        56, 56  /* tkip(10byte, 20byte), wpa2+tkip(20byte) */
+    },
+    {  /* aes, + ccmp header(8) + data + MIC(8) + ICV(4) */
+        52, 52
+    },
+    {  /* tkip-aes */
+        56, 52  /* fromDs==tkip,toDs==aes */
+    }
+};
+#endif
 
 #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
 }

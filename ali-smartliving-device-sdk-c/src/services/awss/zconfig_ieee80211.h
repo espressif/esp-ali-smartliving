@@ -13,10 +13,12 @@ extern "C"
 {
 #endif
 
-#define WIFI_RX_SENSITIVITY   (-85)
 #ifndef ETH_ALEN
 #define ETH_ALEN    6
 #endif
+
+#define WLAN_FIXED_CHANNEL_NUM          (16)
+extern const uint8_t wlan_fixed_scanning_channels[WLAN_FIXED_CHANNEL_NUM];
 
 /*
  * DS bit usage
@@ -84,6 +86,14 @@ extern "C"
 #define WLAN_OUI_TYPE_ALIBABA           (1)
 #define WLAN_OUI_TYPE_ENROLLEE          (0xAA)
 #define WLAN_OUI_TYPE_REGISTRAR         (0xAB)
+
+enum WIFI_RSSI_LEVEL
+{
+    WIFI_RSSILEVEL_1 = -100,
+    WIFI_RSSILEVEL_2 = -85,
+    WIFI_RSSILEVEL_3 = -70,
+    WIFI_RSSILEVEL_4 = -60,
+};
 
 enum ALINK_TYPE {
     ALINK_INVALID = 0,
@@ -248,15 +258,10 @@ struct awss_protocol_couple_type {
     awss_protocol_finish_func_type awss_protocol_finish_func;
 };
 
-struct ap_info *zconfig_get_apinfo(uint8_t *mac);
-struct ap_info *zconfig_get_apinfo_by_3_byte_mac(uint8_t *last_3_byte_mac);
-struct ap_info *zconfig_get_apinfo_by_ssid(uint8_t *ssid);
-struct ap_info *zconfig_get_apinfo_by_ssid_prefix(uint8_t *ssid_prefix);
-struct ap_info *zconfig_get_apinfo_by_ssid_suffix(uint8_t *ssid_suffix);
-
 /* add channel to scanning channel list */
 int zconfig_add_active_channel(int channel);
 uint8_t zconfig_get_press_status();
+uint8_t *zconfig_remove_link_header(uint8_t **in, int *len, int link_type);
 
 int ieee80211_hdrlen(uint16_t fc);
 int ieee80211_has_a4(uint16_t fc);
@@ -276,6 +281,7 @@ int ieee80211_is_data_exact(uint16_t fc);
 int ieee80211_has_protected(uint16_t fc);
 int ieee80211_is_data_present(uint16_t fc);
 int ieee80211_get_radiotap_len(uint8_t *data);
+int ieee80211_is_invalid_pkg(void *pkt_data, uint32_t pkt_length);
 int ieee80211_get_bssid(uint8_t *in, uint8_t *mac);
 int ieee80211_get_ssid(uint8_t *beacon_frame, uint16_t frame_len, uint8_t *ssid);
 int ieee80211_data_extract(uint8_t *in, int len, int link_type, struct parser_res *res, signed char rssi);
@@ -287,10 +293,14 @@ uint8_t *ieee80211_get_DA(struct ieee80211_hdr *hdr);
 uint8_t *ieee80211_get_BSSID(struct ieee80211_hdr *hdr);
 const uint8_t *cfg80211_find_ie(uint8_t eid, const uint8_t *ies, int len);
 const uint8_t *cfg80211_find_vendor_ie(uint32_t oui, uint8_t oui_type, const uint8_t *ies, int len);
+
+#ifdef AWSS_SUPPORT_APLIST
 struct ap_info *zconfig_get_apinfo(uint8_t *mac);
+struct ap_info *zconfig_get_apinfo_by_3_byte_mac(uint8_t *last_3_byte_mac);
 struct ap_info *zconfig_get_apinfo_by_ssid(uint8_t *ssid);
 struct ap_info *zconfig_get_apinfo_by_ssid_prefix(uint8_t *ssid_prefix);
 struct ap_info *zconfig_get_apinfo_by_ssid_suffix(uint8_t *ssid_suffix);
+#endif
 
 #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
 }

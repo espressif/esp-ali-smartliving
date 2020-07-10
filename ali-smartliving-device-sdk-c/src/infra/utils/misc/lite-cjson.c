@@ -835,7 +835,6 @@ int lite_cjson_object_item(_IN_ lite_cjson_t *lite, _IN_ const char *key, _IN_ i
 }
 
 /*** cjson create, add and print ***/
-#if defined(ALCS_ENABLED)
 #define true ((cJSON_bool)1)
 #define false ((cJSON_bool)0)
 #define cjson_min(a, b) ((a < b) ? a : b)
@@ -965,7 +964,7 @@ static int remove_zero(unsigned char buffer[26], int length)
 {
     int idx = 0, found = 0;
 
-    for (idx = 0; idx < 26; idx ++) {
+    for (idx = 0;idx < 26;idx++) {
         if (buffer[idx] == '.') {
             found = 1;
             continue;
@@ -979,14 +978,14 @@ static int remove_zero(unsigned char buffer[26], int length)
         return length;
     }
 
-    for (; idx > 0; idx --) {
+    for (;idx > 0;idx--) {
         if (buffer[idx-1] == '0') {
             buffer[idx-1] = '\0';
-            length --;
-        } else {
+            length--;
+        }else{
             if (buffer[idx-1] == '.') {
                 buffer[idx-1] = '\0';
-                length --;
+                length--;
             }
             break;
         }
@@ -1027,7 +1026,7 @@ static cJSON_bool print_number(const lite_cjson_item_t *const item, printbuffer 
                 /* If not, print with 17 decimal places of precision */
                 length = sprintf((char *)number_buffer, "%1.17g", d);
             }
-        } else {
+        }else{
             length = remove_zero(number_buffer,length);
         }
     }
@@ -1804,4 +1803,3 @@ lite_cjson_item_t *lite_cjson_create_stringArray(const char **strings, int count
 
     return a;
 }
-#endif

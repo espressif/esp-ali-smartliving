@@ -34,15 +34,20 @@ static void *g_coap_ctx = NULL;
 int awss_release_coap_ctx(void *session)
 {
     struct coap_session_ctx_t *ctx = (struct coap_session_ctx_t *)session;
-    if (ctx == NULL)
+    if (ctx == NULL) {
         return 0;
+    }
 
     if (ctx->request) {
         void *payload = ((struct CoAPMessage *)ctx->request)->payload;
-        if (payload) os_free(payload);
+        if (payload) {
+            os_free(payload);
+        }
         os_free(ctx->request);
     }
-    if (ctx->remote) os_free(ctx->remote);
+    if (ctx->remote) {
+        os_free(ctx->remote);
+    }
     os_free(ctx);
     return 0;
 }
@@ -50,12 +55,14 @@ int awss_release_coap_ctx(void *session)
 void *awss_cpy_coap_ctx(void *request, void *remote, char mcast)
 {
     struct coap_session_ctx_t *ctx = os_zalloc(sizeof(struct coap_session_ctx_t));
-    if (ctx == NULL)
+    if (ctx == NULL) {
         goto CPY_CTX_FAIL;
+    }
 
     ctx->request = os_zalloc(sizeof(struct CoAPMessage));
-    if (ctx->request == NULL)
+    if (ctx->request == NULL) {
         goto CPY_CTX_FAIL;
+    }
 
     memcpy(ctx->request, request, sizeof(struct CoAPMessage));
     do {
@@ -65,19 +72,22 @@ void *awss_cpy_coap_ctx(void *request, void *remote, char mcast)
 
         payload = awss_cmp_get_coap_payload(request, &len);
         req->payloadlen = len;
-        if (payload == NULL)
+        if (payload == NULL) {
             break;
+        }
 
         req->payload = os_zalloc(len + 1);
-        if (req->payload == NULL)
+        if (req->payload == NULL) {
             goto CPY_CTX_FAIL;
+        }
 
         memcpy(req->payload, payload, len);
     } while (0);
 
     ctx->remote = os_zalloc(sizeof(platform_netaddr_t));
-    if (ctx->remote == NULL)
+    if (ctx->remote == NULL) {
         goto CPY_CTX_FAIL;
+    }
 
     memcpy(ctx->remote, remote, sizeof(platform_netaddr_t));
     ctx->is_mcast = mcast;
@@ -91,31 +101,36 @@ CPY_CTX_FAIL:
 
 uint8_t awss_cmp_get_coap_code(void *request)
 {
-    if (request == NULL)
+    if (request == NULL) {
         return 0x60;
+    }
     struct CoAPMessage *msg = (struct CoAPMessage *)request;
     return msg->header.code;
 }
 
 char *awss_cmp_get_coap_payload(void *request, int *payload_len)
 {
-    if (request == NULL)
+    if (request == NULL) {
         return NULL;
+    }
 
     struct CoAPMessage *msg = (struct CoAPMessage *)request;
-    if (payload_len)
+    if (payload_len) {
         *payload_len = msg->payloadlen;
+    }
     return (char *)msg->payload;
 }
 
-int awss_cmp_coap_register_cb(char *topic, void* cb)
+int awss_cmp_coap_register_cb(char *topic, void *cb)
 {
     int ret = STATE_SUCCESS;
-    if (g_coap_ctx == NULL)
+    if (g_coap_ctx == NULL) {
         g_coap_ctx = (void *)CoAPServer_init();
+    }
 
     if (g_coap_ctx == NULL) {
-        //dump_dev_bind_status(STATE_BIND_COAP_INIT_FAIL, NULL);
+        //dump_dev_bind_status(STATE_BIND_COAP_INIT_FAIL, "coap init fail");
+		//iotx_state_event(ITE_STATE_DEV_BIND, STATE_BIND_COAP_INIT_FAIL, NULL);
         return  STATE_WIFI_COAP_INIT_FAILED;
     }
     if (topic == NULL) {
@@ -149,26 +164,28 @@ int awss_cmp_coap_send(void *buf, uint32_t len, void *sa, const char *uri, void 
 
 int awss_cmp_coap_send_resp(void *buf, uint32_t len, void *sa, const char *uri, void *req, void *cb, uint16_t *msgid, char qos)
 {
-    if (g_coap_ctx == NULL) g_coap_ctx = (void *)CoAPServer_init();
+    if (g_coap_ctx == NULL) {
+        g_coap_ctx = (void *)CoAPServer_init();
+    }
 
     return CoAPServerResp_send(g_coap_ctx, (NetworkAddr *)sa, (uint8_t *)buf, (uint16_t)len, req, uri, (CoAPSendMsgHandler)cb, msgid, qos);
 }
 
 int awss_cmp_coap_ob_send(void *buf, uint32_t len, void *sa, const char *uri, void *cb)
 {
-    if (g_coap_ctx == NULL) g_coap_ctx = (void *)CoAPServer_init();
+    if (g_coap_ctx == NULL) {
+        g_coap_ctx = (void *)CoAPServer_init();
+    }
 
     return CoAPObsServer_notify(g_coap_ctx, uri, (uint8_t *)buf, (uint16_t)len, cb);
 }
 
 int awss_cmp_coap_deinit()
 {
-    void *coap_ctx = g_coap_ctx;
+    if (g_coap_ctx) {
+        CoAPServer_deinit(g_coap_ctx);
+    }
     g_coap_ctx = NULL;
-
-    if (coap_ctx)
-        CoAPServer_deinit(coap_ctx);
-
     return 0;
 }
 
@@ -188,16 +205,18 @@ const struct awss_cmp_couple awss_local_couple[] = {
 #ifdef DEV_OFFLINE_OTA_ENABLE
     {AWSS_LC_INIT_DEV_AP,                    TOPIC_DEV_OFFLINE_OTA,               wifimgr_process_dev_offline_ota_request},
 #endif
-#endif
 #ifdef DEV_OFFLINE_LOG_ENABLE
-    {AWSS_LC_INIT_DEV_AP,                    TOPIC_DEV_OFFLINE_LOG_GET,           diagnosis_offline_log_get},
+    {AWSS_LC_INIT_BIND | AWSS_LC_INIT_DEV_AP,                    TOPIC_DEV_OFFLINE_LOG_GET,           diagnosis_offline_log_get},
+    {AWSS_LC_INIT_BIND | AWSS_LC_INIT_DEV_AP,                    TOPIC_DEV_OFFLINE_LOG_GET_FINISH,        diagnosis_offline_log_finish},
 #endif
-#endif
+    {AWSS_LC_INIT_BIND | AWSS_LC_INIT_DEV_AP,                    TOPIC_DEV_DIAGNOSIS_FINISH,          diagnosis_finish},
+#endif //DEV_ERRCODE_ENABLE
+#endif //AWSS_SUPPORT_DEV_AP
     {AWSS_LC_INIT_SUC,                       TOPIC_AWSS_GET_CONNECTAP_INFO_MCAST, awss_process_mcast_get_connectap_info},
     {AWSS_LC_INIT_SUC,                       TOPIC_AWSS_GET_CONNECTAP_INFO_UCAST, awss_process_ucast_get_connectap_info},
 #ifndef AWSS_DISABLE_REGISTRAR
-    {AWSS_LC_INIT_BIND,                      TOPIC_NOTIFY,                        online_dev_bind_monitor},
-    {AWSS_LC_INIT_BIND,                      TOPIC_AWSS_CONNECTAP_NOTIFY,         online_dev_bind_monitor},
+    {AWSS_LC_INIT_BIND,                      TOPIC_NOTIFY,                        awss_registrar_enr_bind_monitor},
+    {AWSS_LC_INIT_BIND,                      TOPIC_AWSS_CONNECTAP_NOTIFY,         awss_registrar_enr_bind_monitor},
 #endif
 #endif
     {AWSS_LC_INIT_BIND,                      TOPIC_GETDEVICEINFO_MCAST,           online_mcast_get_device_info},
@@ -228,8 +247,9 @@ int awss_cmp_local_init(int init_stage)
 
 int awss_cmp_local_deinit(int force)
 {
-    if (g_coap_ctx == NULL)
+    if (g_coap_ctx == NULL) {
         return 0;
+    }
 #ifdef WIFI_PROVISION_ENABLED
 #if defined(AWSS_SUPPORT_ADHA) || defined(AWSS_SUPPORT_AHA)
     awss_devinfo_notify_stop();

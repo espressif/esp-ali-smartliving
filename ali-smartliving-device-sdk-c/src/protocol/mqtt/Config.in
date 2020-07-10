@@ -11,14 +11,6 @@ config MQTT_COMM_ENABLED
 menu "MQTT Configurations"
     depends on MQTT_COMM_ENABLED
 
-    config MQTT_DIRECT
-        bool "FEATURE_MQTT_DIRECT"
-        default y
-        help
-            Directly connect MQTT server without perform HTTP authenticate to another HTTP server ahead
-
-            Switching to "y" leads to connect MQTT server directly and MQTT_DIRECT included into CFLAGS
-            Switching to "n" leads to legacy authenticate mode: connnect HTTP server first, then connect MQTT server afterwards
     config MQTT_AUTO_SUBSCRIBE
 	bool "FEATURE_MQTT_AUTO_SUBSCRIBE"
 	default y
@@ -37,10 +29,4 @@ menu "MQTT Configurations"
         help
             Enable capability of publishing important device running log messages to IoT cloud
 
-    config MQTT_PREAUTH_SUPPORT_HTTPS_CDN
-	bool "FEATURE_PREAUTH_HTTPS_CDN"
-	default y
-	help
-	    Enable global center https cdn accelerate.
 endmenu
-

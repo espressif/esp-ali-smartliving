@@ -62,12 +62,13 @@ int decode_passwd()
     aes_decrypt_string((char *)(mcast_smartconfig_data.passwd), (char *)zc_passwd,
                        passwd_len,
                        1, HAL_Awss_Get_Encrypt_Type(), 0, NULL);
-    if (is_utf8((const char *)zc_passwd, passwd_len) == 0) {
+    if (zconfig_is_utf8((const char *)zc_passwd, passwd_len) == 0) {
         dump_awss_status(STATE_WIFI_PASSWD_DECODE_FAILED, "mcast passwd err");
         awss_event_post(IOTX_AWSS_PASSWD_ERR);
         AWSS_UPDATE_STATIS(AWSS_STATIS_SM_IDX, AWSS_STATIS_TYPE_PASSWD_ERR);
         return IOTX_AWSS_PASSWD_ERR;
     }
+    awss_debug("mcast done");
     return SUCCESS_RETURN;
 }
 

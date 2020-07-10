@@ -155,7 +155,6 @@ int awss_start(void)
 
     awss_success_notify();
     awss_stopped = 1;
-
     return 0;
 }
 
@@ -195,6 +194,7 @@ int awss_config_press(void)
     int timeout = os_awss_get_timeout_interval_ms();
 
     awss_trace("enable awss\r\n");
+
     g_user_press = 1;
 
     awss_event_post(IOTX_AWSS_ENABLE);

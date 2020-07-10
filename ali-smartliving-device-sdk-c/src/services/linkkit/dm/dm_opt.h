@@ -2,7 +2,6 @@
  * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
 
-#if !defined(DEVICE_MODEL_RAWDATA_SOLO)
 #ifndef _DM_OPT_H
 #define _DM_OPT_H
 
@@ -23,5 +22,4 @@ typedef struct {
 int dm_opt_set(dm_opt_t opt, void *data);
 int dm_opt_get(dm_opt_t opt, void *data);
 
-#endif
 #endif

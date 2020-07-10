@@ -1,0 +1,96 @@
+var COMMAND_REPORT = 0x01; //属性上报
+var COMMAND_SET = 0x02; //属性设置
+
+var ALINK_PROP_REPORT_METHOD = 'thing.event.property.post'; //标准ALink JSON格式topic， 设备上传属性数据到云端
+var ALINK_PROP_SET_METHOD = 'thing.service.property.set'; //标准ALink JSON格式topic， 云端下发属性控制指令到设备端
+var ALINK_PROP_SET_REPLY_METHOD = 'thing.service.property.set'; //标准ALink JSON格式topic, 设备上报属性设置的结果到云端
+/*
+示例数据：
+设备上报数据
+传入参数 ->
+    0x010000006400
+输出结果 ->
+    {"method":"thing.event.property.post","id":"100","params":{"LightSwitch":0},"version":"1.0"}
+*/
+function rawDataToProtocol(bytes) {
+    var uint8Array = new Uint8Array(bytes.length);
+    for (var i = 0; i < bytes.length; i++) {
+        uint8Array[i] = bytes[i] & 0xff;
+    }
+    var dataView = new DataView(uint8Array.buffer, 0);
+    var jsonMap = new Object();
+    var fHead = uint8Array[0]; // command
+    if (fHead == COMMAND_REPORT) {
+        jsonMap['method'] = ALINK_PROP_REPORT_METHOD; //ALink JSON格式 - 属性上报topic
+        jsonMap['version'] = '1.0'; //ALink JSON格式 - 协议版本号固定字段
+        jsonMap['id'] = '' + dataView.getInt32(1); //ALink JSON格式 - 标示该次请求id值
+        var params = {};
+        params['LightSwitch'] = dataView.getInt8(5); //对应产品属性中 prop_int16
+        jsonMap['params'] = params; //ALink JSON格式 - params标准字段
+    }
+
+    return jsonMap;
+}
+/*
+示例数据：
+属性设置
+传入参数 ->
+    {"method":"thing.service.property.set","id":"100","version":"1.0","params":{"LightSwitch":0}}
+输出结果 ->
+    0x020000006400
+*/
+function protocolToRawData(json) {
+    var method = json['method'];
+    var id = json['id'];
+    var version = json['version'];
+    var payloadArray = [];
+    if (method == ALINK_PROP_SET_METHOD) // 属性设置
+    {
+        var params = json['params'];
+        var light_switch = params['LightSwitch'];
+
+        //按照自定义协议格式拼接 rawData
+        payloadArray = payloadArray.concat(buffer_uint8(COMMAND_SET)); // command字段
+        payloadArray = payloadArray.concat(buffer_int32(parseInt(id))); // ALink JSON格式 'id'
+        payloadArray = payloadArray.concat(buffer_uint8(light_switch)); // 属性'light_switch'的值
+    } 
+    
+    return payloadArray;
+}
+
+/**
+ * 将设备自定义topic数据转换为json格式数据, 设备上报数据到物联网平台时调用
+ * 入参：topic   字符串，设备上报消息的topic     
+ * 入参：rawData byte[]数组                  不能为空
+ * 出参：jsonObj 对象                        不能为空
+ */
+function transformPayload(topic, rawData) {
+    jsonObj = {}
+    return jsonObj
+}
+
+//以下是部分辅助函数
+function buffer_uint8(value) {
+    var uint8Array = new Uint8Array(1);
+    var dv = new DataView(uint8Array.buffer, 0);
+    dv.setUint8(0, value);
+    return [].slice.call(uint8Array);
+}
+function buffer_int16(value) {
+    var uint8Array = new Uint8Array(2);
+    var dv = new DataView(uint8Array.buffer, 0);
+    dv.setInt16(0, value);
+    return [].slice.call(uint8Array);
+}
+function buffer_int32(value) {
+    var uint8Array = new Uint8Array(4);
+    var dv = new DataView(uint8Array.buffer, 0);
+    dv.setInt32(0, value);
+    return [].slice.call(uint8Array);
+}
+function buffer_float32(value) {
+    var uint8Array = new Uint8Array(4);
+    var dv = new DataView(uint8Array.buffer, 0);
+    dv.setFloat32(0, value);
+    return [].slice.call(uint8Array);
+}

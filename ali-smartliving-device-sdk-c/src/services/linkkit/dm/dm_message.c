@@ -271,17 +271,17 @@ int dm_msg_response(dm_msg_dest_type_t type, _IN_ dm_msg_request_payload_t *requ
         dm_client_publish(uri, (unsigned char *)payload, strlen(payload), NULL);
     }
 
-#ifdef ALCS_ENABLED    
+#ifdef ALCS_ENABLED
     //if (type & DM_MSG_DEST_LOCAL) {
     if (type & DM_MSG_DEST_LOCAL && strstr(uri, "Rhythm_reply") == NULL) {
         do {
             if(strlen(uri) < 6) {
                 break;
             }
-            char *end = uri + strlen(uri) - 6;            
+            char *end = uri + strlen(uri) - 6;
             if (strstr(end, "_reply") != 0) {
                 *end = '\0';
-            }           
+            }
             dm_server_send(uri, (unsigned char *)payload, strlen(payload), user_data);
         }while(0);
 
@@ -339,9 +339,9 @@ int dm_msg_thing_model_down_raw(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ 
 }
 
 #ifdef LINK_VISUAL_ENABLE
-const char DM_MSG_LINK_VISUAL_FMT[] DM_READ_ONLY = "{\"devid\":%d,\"payload\":%.*s}";
+const char DM_MSG_LINK_VISUAL_FMT[] DM_READ_ONLY = "{\"devid\":%d,\"serviceid\":\"%.*s\",\"payload\":%.*s}";
 int dm_msg_thing_model_link_visual(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char device_name[DEVICE_NAME_MAXLEN],
-                                _IN_ char *payload, _IN_ int payload_len)
+                                   _IN_ char *service_id, _IN_ int service_id_len, _IN_ char *payload, _IN_ int payload_len)
 {
     int res = 0, devid = 0, message_len = 0;
     char *hexstr = NULL, *message = NULL;
@@ -356,13 +356,13 @@ int dm_msg_thing_model_link_visual(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _I
     if (res != SUCCESS_RETURN) {
         return FAIL_RETURN;
     }
-    message_len = strlen(DM_MSG_LINK_VISUAL_FMT) + DM_UTILS_UINT32_STRLEN + payload_len + 1;
+    message_len = strlen(DM_MSG_LINK_VISUAL_FMT) + DM_UTILS_UINT32_STRLEN + service_id_len + payload_len + 1;
     message = DM_malloc(message_len);
     if (message == NULL) {
         return DM_MEMORY_NOT_ENOUGH;
     }
     memset(message, 0, message_len);
-    HAL_Snprintf(message, message_len, DM_MSG_LINK_VISUAL_FMT, devid, payload_len, payload);
+    HAL_Snprintf(message, message_len, DM_MSG_LINK_VISUAL_FMT, devid, service_id_len, service_id, payload_len, payload);
     res = _dm_msg_send_to_user(IOTX_DM_EVENT_MODEL_LINK_VISUAL, message);
     if (res != SUCCESS_RETURN) {
         DM_free(message);
@@ -439,31 +439,6 @@ int dm_msg_property_set(int devid, dm_msg_request_payload_t *request)
     HAL_Snprintf(message, message_len, DM_MSG_PROPERTY_SET_FMT, devid, request->params.value_length, request->params.value);
 #endif
     res = _dm_msg_send_to_user(IOTX_DM_EVENT_PROPERTY_SET, message);
-    if (res != SUCCESS_RETURN) {
-        DM_free(message);
-        return FAIL_RETURN;
-    }
-    return SUCCESS_RETURN;
-}
-
-int dm_msg_thing_event_notify(int devid, dm_msg_request_payload_t *request)
-{
-    int res = 0, message_len = 0;
-    char *message = NULL;
-
-    message_len = strlen(DM_MSG_PROPERTY_SET_FMT) + DM_UTILS_UINT32_STRLEN + request->params.value_length + 1;
-    message = DM_malloc(message_len);
-    if (message == NULL) {
-        return DM_MEMORY_NOT_ENOUGH;
-    }
-    memset(message, 0, message_len);
-#ifdef LOG_REPORT_TO_CLOUD
-    HAL_Snprintf(message, message_len, DM_MSG_PROPERTY_SET_FMT, devid, request->params.value_length, request->params.value,
-                 request->id.value_length, request->id.value);
-#else
-    HAL_Snprintf(message, message_len, DM_MSG_PROPERTY_SET_FMT, devid, request->params.value_length, request->params.value);
-#endif
-    res = _dm_msg_send_to_user(IOTX_DM_EVENT_THING_EVENT_NOTIFY, message);
     if (res != SUCCESS_RETURN) {
         DM_free(message);
         return FAIL_RETURN;
@@ -563,52 +538,6 @@ int dm_msg_thing_service_request(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_
     return SUCCESS_RETURN;
 }
 
-const char DM_MSG_EVENT_RRPC_REQUEST_FMT[] DM_READ_ONLY =
-            "{\"id\":\"%.*s\",\"devid\":%d,\"serviceid\":\"%.*s\",\"rrpcid\":\"%.*s\",\"payload\":%.*s}";
-int dm_msg_rrpc_request(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char device_name[DEVICE_NAME_MAXLEN],
-                        char *rrpcid, int rrpcid_len, dm_msg_request_payload_t *request)
-{
-    int res = 0, devid = 0, message_len = 0;
-    int service_offset = 0, serviceid_len = 0;
-    char *serviceid = NULL, *message = NULL;
-
-    /* Get Devid */
-    res = dm_mgr_search_device_by_pkdn(product_key, device_name, &devid);
-    if (res != SUCCESS_RETURN) {
-        return FAIL_RETURN;
-    }
-
-    /* Get Service ID */
-    res = dm_utils_memtok(request->method.value, request->method.value_length, '.', 2, &service_offset);
-    if (res != SUCCESS_RETURN || service_offset >= request->method.value_length - 1) {
-        return FAIL_RETURN;
-    }
-    serviceid_len = request->method.value_length - service_offset - 1;
-    serviceid = request->method.value + service_offset + 1;
-    /* dm_log_info("Current RRPC Service ID: %.*s", serviceid_len, serviceid); */
-
-    /* Send Message To User */
-    message_len = strlen(DM_MSG_EVENT_RRPC_REQUEST_FMT) + request->id.value_length + DM_UTILS_UINT32_STRLEN + serviceid_len
-                  + rrpcid_len +
-                  request->params.value_length + 1;
-    message = DM_malloc(message_len);
-    if (message == NULL) {
-        return DM_MEMORY_NOT_ENOUGH;
-    }
-    memset(message, 0, message_len);
-    HAL_Snprintf(message, message_len, DM_MSG_EVENT_RRPC_REQUEST_FMT, request->id.value_length, request->id.value, devid,
-                 serviceid_len, serviceid, rrpcid_len, rrpcid,
-                 request->params.value_length, request->params.value);
-
-    res = _dm_msg_send_to_user(IOTX_DM_EVENT_RRPC_REQUEST, message);
-    if (res != SUCCESS_RETURN) {
-        DM_free(message);
-        return FAIL_RETURN;
-    }
-
-    return SUCCESS_RETURN;
-}
-
 const char DM_MSG_EVENT_PROPERTY_POST_REPLY_FMT[] DM_READ_ONLY =
             "{\"id\":%d,\"code\":%d,\"devid\":%d,\"payload\":%.*s}";
 int dm_msg_thing_event_property_post_reply(dm_msg_response_payload_t *response)
@@ -655,106 +584,6 @@ int dm_msg_thing_event_property_post_reply(dm_msg_response_payload_t *response)
                  payload_len, payload);
 
     res = _dm_msg_send_to_user(IOTX_DM_EVENT_EVENT_PROPERTY_POST_REPLY, message);
-    if (res != SUCCESS_RETURN) {
-        DM_free(message);
-        return FAIL_RETURN;
-    }
-
-    return SUCCESS_RETURN;
-}
-
-const char DM_MSG_EVENT_EVENT_NOTIFY_REPLY_FMT[] DM_READ_ONLY =
-            "{\"id\":%d,\"code\":%d,\"devid\":%d,\"payload\":%.*s}";
-int dm_msg_thing_event_notify_reply(dm_msg_response_payload_t *response)
-{
-    int res = 0, devid = 0, id = 0, message_len = 0, payload_len = 0;
-    char *message = NULL, *payload = NULL;
-    char int_id[DM_UTILS_UINT32_STRLEN] = {0};
-
-    /* Message ID */
-    if (response->id.value_length > DM_UTILS_UINT32_STRLEN) {
-        return FAIL_RETURN;
-    }
-    memcpy(int_id, response->id.value, response->id.value_length);
-    id = atoi(int_id);
-
-    /* dm_log_debug("Current ID: %d", id); */
-
-#if !defined(DM_MESSAGE_CACHE_DISABLED)
-    dm_msg_cache_node_t *node = NULL;
-    res = dm_msg_cache_search(id, &node);
-    if (res != SUCCESS_RETURN) {
-        return FAIL_RETURN;
-    }
-    devid = node->devid;
-#endif
-
-    if ((strlen("success") == response->message.value_length) &&
-        (memcmp("success", response->message.value, response->message.value_length) == 0)) {
-        payload = response->data.value;
-        payload_len = response->data.value_length;
-    } else {
-        payload = response->message.value;
-        payload_len = response->message.value_length;
-    }
-
-    message_len = strlen(DM_MSG_EVENT_PROPERTY_POST_REPLY_FMT) + DM_UTILS_UINT32_STRLEN * 3 + payload_len +
-                  1;
-    message = DM_malloc(message_len);
-    if (message == NULL) {
-        return DM_MEMORY_NOT_ENOUGH;
-    }
-    memset(message, 0, message_len);
-    HAL_Snprintf(message, message_len, DM_MSG_EVENT_PROPERTY_POST_REPLY_FMT, id, response->code.value_int, devid,
-                 payload_len, payload);
-
-    res = _dm_msg_send_to_user(IOTX_DM_EVENT_THING_EVENT_NOTIFY_REPLY, message);
-    if (res != SUCCESS_RETURN) {
-        DM_free(message);
-        return FAIL_RETURN;
-    }
-
-    return SUCCESS_RETURN;
-}
-
-const char DM_MSG_EVENT_SPECIFIC_POST_REPLY_FMT[] DM_READ_ONLY =
-            "{\"id\":%d,\"code\":%d,\"devid\":%d,\"eventid\":\"%.*s\",\"payload\":\"%.*s\"}";
-int dm_msg_thing_event_post_reply(_IN_ char *identifier, _IN_ int identifier_len,
-                                  _IN_ dm_msg_response_payload_t *response)
-{
-    int res = 0, devid = 0, id = 0, message_len = 0;
-    char *message = NULL;
-    char int_id[DM_UTILS_UINT32_STRLEN] = {0};
-
-    /* Message ID */
-    if (response->id.value_length > DM_UTILS_UINT32_STRLEN) {
-        return FAIL_RETURN;
-    }
-    memcpy(int_id, response->id.value, response->id.value_length);
-    id = atoi(int_id);
-
-    /* dm_log_debug("Current ID: %d", id); */
-
-#if !defined(DM_MESSAGE_CACHE_DISABLED)
-    dm_msg_cache_node_t *node = NULL;
-    res = dm_msg_cache_search(id, &node);
-    if (res != SUCCESS_RETURN) {
-        return FAIL_RETURN;
-    }
-    devid = node->devid;
-#endif
-
-    message_len = strlen(DM_MSG_EVENT_SPECIFIC_POST_REPLY_FMT) + DM_UTILS_UINT32_STRLEN * 3 + strlen(
-                              identifier) + response->message.value_length + 1;
-    message = DM_malloc(message_len);
-    if (message == NULL) {
-        return DM_MEMORY_NOT_ENOUGH;
-    }
-    memset(message, 0, message_len);
-    HAL_Snprintf(message, message_len, DM_MSG_EVENT_SPECIFIC_POST_REPLY_FMT, id, response->code.value_int, devid,
-                 identifier_len, identifier, response->message.value_length, response->message.value);
-
-    res = _dm_msg_send_to_user(IOTX_DM_EVENT_EVENT_SPECIFIC_POST_REPLY, message);
     if (res != SUCCESS_RETURN) {
         DM_free(message);
         return FAIL_RETURN;
@@ -893,6 +722,183 @@ int dm_msg_thing_deviceinfo_delete_reply(dm_msg_response_payload_t *response)
     return SUCCESS_RETURN;
 }
 
+const char DM_MSG_EVENT_SPECIFIC_POST_REPLY_FMT[] DM_READ_ONLY =
+            "{\"id\":%d,\"code\":%d,\"devid\":%d,\"eventid\":\"%.*s\",\"payload\":\"%.*s\"}";
+int dm_msg_thing_event_post_reply(_IN_ char *identifier, _IN_ int identifier_len,
+                                  _IN_ dm_msg_response_payload_t *response)
+{
+    int res = 0, devid = 0, id = 0, message_len = 0;
+    char *message = NULL;
+    char int_id[DM_UTILS_UINT32_STRLEN] = {0};
+
+    /* Message ID */
+    if (response->id.value_length > DM_UTILS_UINT32_STRLEN) {
+        return FAIL_RETURN;
+    }
+    memcpy(int_id, response->id.value, response->id.value_length);
+    id = atoi(int_id);
+
+    /* dm_log_debug("Current ID: %d", id); */
+
+#if !defined(DM_MESSAGE_CACHE_DISABLED)
+    dm_msg_cache_node_t *node = NULL;
+    res = dm_msg_cache_search(id, &node);
+    if (res != SUCCESS_RETURN) {
+        return FAIL_RETURN;
+    }
+    devid = node->devid;
+#endif
+
+    message_len = strlen(DM_MSG_EVENT_SPECIFIC_POST_REPLY_FMT) + DM_UTILS_UINT32_STRLEN * 3 + strlen(
+                              identifier) + response->message.value_length + 1;
+    message = DM_malloc(message_len);
+    if (message == NULL) {
+        return DM_MEMORY_NOT_ENOUGH;
+    }
+    memset(message, 0, message_len);
+    HAL_Snprintf(message, message_len, DM_MSG_EVENT_SPECIFIC_POST_REPLY_FMT, id, response->code.value_int, devid,
+                 identifier_len, identifier, response->message.value_length, response->message.value);
+
+    res = _dm_msg_send_to_user(IOTX_DM_EVENT_EVENT_SPECIFIC_POST_REPLY, message);
+    if (res != SUCCESS_RETURN) {
+        DM_free(message);
+        return FAIL_RETURN;
+    }
+
+    return SUCCESS_RETURN;
+}
+#endif /* end of DEVICE_MODEL_RAWDATA_SOLO*/
+
+const char DM_MSG_EVENT_EVENT_NOTIFY_REPLY_FMT[] DM_READ_ONLY =
+            "{\"id\":%d,\"code\":%d,\"devid\":%d,\"payload\":%.*s}";
+int dm_msg_thing_event_notify_reply(dm_msg_response_payload_t *response)
+{
+    int res = 0, devid = 0, id = 0, message_len = 0, payload_len = 0;
+    char *message = NULL, *payload = NULL;
+    char int_id[DM_UTILS_UINT32_STRLEN] = {0};
+
+    /* Message ID */
+    if (response->id.value_length > DM_UTILS_UINT32_STRLEN) {
+        return FAIL_RETURN;
+    }
+    memcpy(int_id, response->id.value, response->id.value_length);
+    id = atoi(int_id);
+
+    /* dm_log_debug("Current ID: %d", id); */
+
+#if !defined(DM_MESSAGE_CACHE_DISABLED)
+    dm_msg_cache_node_t *node = NULL;
+    res = dm_msg_cache_search(id, &node);
+    if (res != SUCCESS_RETURN) {
+        return FAIL_RETURN;
+    }
+    devid = node->devid;
+#endif
+
+    if ((strlen("success") == response->message.value_length) &&
+        (memcmp("success", response->message.value, response->message.value_length) == 0)) {
+        payload = response->data.value;
+        payload_len = response->data.value_length;
+    } else {
+        payload = response->message.value;
+        payload_len = response->message.value_length;
+    }
+
+    message_len = strlen(DM_MSG_EVENT_EVENT_NOTIFY_REPLY_FMT) + DM_UTILS_UINT32_STRLEN * 3 + payload_len +
+                  1;
+    message = DM_malloc(message_len);
+    if (message == NULL) {
+        return DM_MEMORY_NOT_ENOUGH;
+    }
+    memset(message, 0, message_len);
+    HAL_Snprintf(message, message_len, DM_MSG_EVENT_EVENT_NOTIFY_REPLY_FMT, id, response->code.value_int, devid,
+                 payload_len, payload);
+
+    res = _dm_msg_send_to_user(IOTX_DM_EVENT_THING_EVENT_NOTIFY_REPLY, message);
+    if (res != SUCCESS_RETURN) {
+        DM_free(message);
+        return FAIL_RETURN;
+    }
+
+    return SUCCESS_RETURN;
+}
+
+const char DM_MSG_EVENT_RRPC_REQUEST_FMT[] DM_READ_ONLY =
+            "{\"id\":\"%.*s\",\"devid\":%d,\"serviceid\":\"%.*s\",\"rrpcid\":\"%.*s\",\"payload\":%.*s}";
+int dm_msg_rrpc_request(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char device_name[DEVICE_NAME_MAXLEN],
+                        char *rrpcid, int rrpcid_len, dm_msg_request_payload_t *request)
+{
+    int res = 0, devid = 0, message_len = 0;
+    int service_offset = 0, serviceid_len = 0;
+    char *serviceid = NULL, *message = NULL;
+
+    /* Get Devid */
+    res = dm_mgr_search_device_by_pkdn(product_key, device_name, &devid);
+    if (res != SUCCESS_RETURN) {
+        return FAIL_RETURN;
+    }
+
+    /* Get Service ID */
+    res = dm_utils_memtok(request->method.value, request->method.value_length, '.', 2, &service_offset);
+    if (res != SUCCESS_RETURN || service_offset >= request->method.value_length - 1) {
+        return FAIL_RETURN;
+    }
+    serviceid_len = request->method.value_length - service_offset - 1;
+    serviceid = request->method.value + service_offset + 1;
+    /* dm_log_info("Current RRPC Service ID: %.*s", serviceid_len, serviceid); */
+
+    /* Send Message To User */
+    message_len = strlen(DM_MSG_EVENT_RRPC_REQUEST_FMT) + request->id.value_length + DM_UTILS_UINT32_STRLEN + serviceid_len
+                  + rrpcid_len +
+                  request->params.value_length + 1;
+    message = DM_malloc(message_len);
+    if (message == NULL) {
+        return DM_MEMORY_NOT_ENOUGH;
+    }
+    memset(message, 0, message_len);
+    HAL_Snprintf(message, message_len, DM_MSG_EVENT_RRPC_REQUEST_FMT, request->id.value_length, request->id.value, devid,
+                 serviceid_len, serviceid, rrpcid_len, rrpcid,
+                 request->params.value_length, request->params.value);
+
+    res = _dm_msg_send_to_user(IOTX_DM_EVENT_RRPC_REQUEST, message);
+    if (res != SUCCESS_RETURN) {
+        DM_free(message);
+        return FAIL_RETURN;
+    }
+
+    return SUCCESS_RETURN;
+}
+
+#ifdef LOG_REPORT_TO_CLOUD
+    const char DM_MSG_EVENT_NOTIFY_FMT[] DM_READ_ONLY = "{\"devid\":%d,\"payload\":%.*s,\"msgid\":%.*s}";
+#else
+    const char DM_MSG_EVENT_NOTIFY_FMT[] DM_READ_ONLY = "{\"devid\":%d,\"payload\":%.*s}";
+#endif
+int dm_msg_thing_event_notify(int devid, dm_msg_request_payload_t *request)
+{
+    int res = 0, message_len = 0;
+    char *message = NULL;
+
+    message_len = strlen(DM_MSG_EVENT_NOTIFY_FMT) + DM_UTILS_UINT32_STRLEN + request->params.value_length + 1;
+    message = DM_malloc(message_len);
+    if (message == NULL) {
+        return DM_MEMORY_NOT_ENOUGH;
+    }
+    memset(message, 0, message_len);
+#ifdef LOG_REPORT_TO_CLOUD
+    HAL_Snprintf(message, message_len, DM_MSG_EVENT_NOTIFY_FMT, devid, request->params.value_length, request->params.value,
+                 request->id.value_length, request->id.value);
+#else
+    HAL_Snprintf(message, message_len, DM_MSG_EVENT_NOTIFY_FMT, devid, request->params.value_length, request->params.value);
+#endif
+    res = _dm_msg_send_to_user(IOTX_DM_EVENT_THING_EVENT_NOTIFY, message);
+    if (res != SUCCESS_RETURN) {
+        DM_free(message);
+        return FAIL_RETURN;
+    }
+    return SUCCESS_RETURN;
+}
+
 const char DM_MSG_THING_NTP_RESPONSE_FMT[] DM_READ_ONLY = "{\"utc\":\"%.*s\"}";
 int dm_msg_ntp_response(char *payload, int payload_len)
 {
@@ -965,8 +971,6 @@ int dm_msg_ext_error_response(char *payload, int payload_len)
 
     return SUCCESS_RETURN;
 }
-
-#endif
 
 #ifdef DEVICE_MODEL_GATEWAY
 const char DM_MSG_TOPO_ADD_NOTIFY_USER_PAYLOAD[] DM_READ_ONLY =
@@ -1158,6 +1162,39 @@ int dm_msg_thing_delete(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char dev
     HAL_Snprintf(message, message_len, DM_MSG_EVENT_THING_DELETE_FMT, res, product_key, device_name, devid);
 
     res = _dm_msg_send_to_user(IOTX_DM_EVENT_THING_DELETE, message);
+    if (res != SUCCESS_RETURN) {
+        DM_free(message);
+        return FAIL_RETURN;
+    }
+
+    return SUCCESS_RETURN;
+}
+
+int dm_msg_thing_topo_change(_IN_ char *payload, _IN_ int payload_len)
+{
+    int res = 0, message_len = 0;
+    char *message = NULL;
+    char *topo_change_fmt = "{\"devid\":%d,\"code\":%d,\"payload\":%.*s}";
+    lite_cjson_t lite;
+
+    if (payload == NULL || payload_len <= 0) {
+        return DM_INVALID_PARAMETER;
+    }
+
+    res = lite_cjson_parse(payload, payload_len, &lite);
+    if (res != SUCCESS_RETURN || !lite_cjson_is_object(&lite)) {
+        return DM_JSON_PARSE_FAILED;
+    }
+
+    message_len = strlen(topo_change_fmt) + payload_len + DM_UTILS_UINT32_STRLEN * 2 + 1;
+    message = DM_malloc(message_len);
+    if (message == NULL) {
+        return DM_MEMORY_NOT_ENOUGH;
+    }
+    memset(message, 0, message_len);
+    HAL_Snprintf(message, message_len, topo_change_fmt, IOTX_DM_LOCAL_NODE_DEVID, 200, payload_len, payload);
+
+    res = _dm_msg_send_to_user(IOTX_DM_EVENT_TOPO_CHANGE, message);
     if (res != SUCCESS_RETURN) {
         DM_free(message);
         return FAIL_RETURN;
@@ -1865,7 +1902,7 @@ int dm_msg_thing_topo_add(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char d
     }
 
     /* TimeStamp */
-    HAL_Snprintf(timestamp, DM_UTILS_UINT64_STRLEN, "%llu", HAL_UptimeMs());
+    HAL_Snprintf(timestamp, DM_UTILS_UINT64_STRLEN, "%d", (unsigned)HAL_UptimeMs());
     /* dm_log_debug("Time Stamp: %s", timestamp); */
 
     /* Client ID */
@@ -2048,13 +2085,14 @@ int dm_msg_combine_login(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char de
         (strlen(product_key) >= PRODUCT_KEY_MAXLEN) ||
         (strlen(device_name) >= DEVICE_NAME_MAXLEN) ||
         (strlen(device_secret) >= DEVICE_SECRET_MAXLEN) ||
+        (strlen(device_secret) <= 0) ||
         (strlen(request->product_key) >= PRODUCT_KEY_MAXLEN) ||
         (strlen(request->device_name) >= DEVICE_NAME_MAXLEN)) {
         return DM_INVALID_PARAMETER;
     }
 
     /* TimeStamp */
-    HAL_Snprintf(timestamp, DM_UTILS_UINT64_STRLEN, "%llu", HAL_UptimeMs());
+    HAL_Snprintf(timestamp, DM_UTILS_UINT64_STRLEN, "%d", (unsigned)HAL_UptimeMs());
     /* dm_log_debug("Time Stamp: %s", timestamp); */
 
     /* Client ID */
@@ -2137,4 +2175,3 @@ int dm_msg_combine_logout(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char d
     return SUCCESS_RETURN;
 }
 #endif
-

@@ -41,13 +41,14 @@ static uint8_t *g_product_key; /* pointer to model_len start pos */
 static uint8_t *enrollee_frame;
 static uint16_t enrollee_frame_len;
 
-static int decrypt_ssid_passwd(uint8_t *ie, uint8_t ie_len,
+static int awss_enrollee_decrypt_passwd(uint8_t *ie, uint8_t ie_len,
                                uint8_t out_ssid[OS_MAX_SSID_LEN],
                                uint8_t out_passwd[OS_MAX_PASSWD_LEN],
                                uint8_t out_bssid[ETH_ALEN],
-                               uint8_t out_token[ZC_MAX_TOKEN_LEN]);
+                               uint8_t out_token[ZC_MAX_TOKEN_LEN],
+                               uint8_t *out_token_type);
 
-void awss_init_enrollee_info(void)// void enrollee_raw_frame_init(void)
+void awss_enrollee_init_info(void)// void enrollee_raw_frame_init(void)
 {
     char *pk = NULL, *dev_name = NULL, *text = NULL;
     uint8_t sign[ENROLLEE_SIGN_SIZE + 1] = {0};
@@ -55,8 +56,10 @@ void awss_init_enrollee_info(void)// void enrollee_raw_frame_init(void)
     int dev_name_len, pk_len;
     int len, ie_len;
 
-    if (enrollee_frame_len)
+    if (enrollee_frame_len) {
+        awss_warn("enr_frame already inited");
         return;
+    }
 
     dev_name = os_zalloc(OS_DEVICE_NAME_LEN + 1);
     pk = os_zalloc(OS_PRODUCT_KEY_LEN + 1);
@@ -86,7 +89,7 @@ void awss_init_enrollee_info(void)// void enrollee_raw_frame_init(void)
     enrollee_frame = os_zalloc(enrollee_frame_len);
 
     /* construct the enrollee frame right now */
-    len = sizeof(probe_req_frame) - FCS_SIZE;
+    len = sizeof(probe_req_frame) - MGMT_FCS_SIZE;
     memcpy(enrollee_frame, probe_req_frame, len);
 
     enrollee_frame[len ++] = 221; //vendor ie
@@ -109,7 +112,7 @@ void awss_init_enrollee_info(void)// void enrollee_raw_frame_init(void)
     len += pk_len;
 
     enrollee_frame[len ++] = RANDOM_MAX_LEN;
-    memcpy(&enrollee_frame[len], aes_random, RANDOM_MAX_LEN);
+    memcpy(&enrollee_frame[len], g_aes_random, RANDOM_MAX_LEN);
     len += RANDOM_MAX_LEN;
 
     enrollee_frame[len ++] = os_get_conn_encrypt_type();  // encrypt type
@@ -120,20 +123,28 @@ void awss_init_enrollee_info(void)// void enrollee_raw_frame_init(void)
     len += ENROLLEE_SIGN_SIZE;
 
     memcpy(&enrollee_frame[len],
-           &probe_req_frame[sizeof(probe_req_frame) - FCS_SIZE], FCS_SIZE);
+           &probe_req_frame[sizeof(probe_req_frame) - MGMT_FCS_SIZE], MGMT_FCS_SIZE);
+    len += MGMT_FCS_SIZE;
 
-    /* update probe request frame src mac */
-    os_wifi_get_mac(enrollee_frame + SA_POS);
-
-    awss_debug("Enrollee ProbReqA init");
-
-    //dump_hex(enrollee_frame, enrollee_frame_len, 24);
-
-    os_free(pk);
     os_free(dev_name);
+    os_free(pk);
+
+    // make sure management frame not overflow
+    if (len > enrollee_frame_len) {
+        awss_err("enr_frame init overflow(%d)", len);
+        return;
+    }
+
+    // update probe request frame src mac
+    os_wifi_get_mac(enrollee_frame + MGMT_SA_POS);
+
+    awss_debug("enr_frame init done(%d)", len);
+#if ZERO_AWSS_VERBOSE_DBG
+    zconfig_dump_hex(enrollee_frame, enrollee_frame_len, 24);
+#endif
 }
 
-void awss_destroy_enrollee_info(void)
+void awss_enrollee_destroy_info(void)
 {
     if (enrollee_frame_len) {
         os_free(enrollee_frame);
@@ -144,107 +155,155 @@ void awss_destroy_enrollee_info(void)
     }
 }
 
-void awss_broadcast_enrollee_info(void)
+void awss_enrollee_broadcast_info(void)
 {
-    if (enrollee_frame_len == 0 || enrollee_frame == NULL)
+    if (enrollee_frame_len == 0 || enrollee_frame == NULL) {
+        awss_warn("enr_frame not inited");
         return;
+    }
     //awss_debug("enrollee send ProbReqA");
     os_wifi_send_80211_raw_frame(FRAME_PROBE_REQ, enrollee_frame,
                                  enrollee_frame_len);
 }
 
 /* return 0 for success, -1 dev_name not match, otherwise return -2 */
-static int decrypt_ssid_passwd(
+static int awss_enrollee_decrypt_passwd(
     uint8_t *ie, uint8_t ie_len,
     uint8_t out_ssid[OS_MAX_SSID_LEN],
     uint8_t out_passwd[OS_MAX_PASSWD_LEN],
     uint8_t out_bssid[ETH_ALEN],
-    uint8_t out_token[ZC_MAX_TOKEN_LEN])
+    uint8_t out_token[ZC_MAX_TOKEN_LEN],
+    uint8_t *out_token_type)
 {
     uint8_t tmp_ssid[OS_MAX_SSID_LEN + 1] = {0}, tmp_passwd[OS_MAX_PASSWD_LEN + 1] = {0};
     uint8_t tmp_token[ZC_MAX_TOKEN_LEN] = {0};
     uint8_t *p_dev_name_sign = NULL, *p_ssid = NULL, *p_passwd = NULL, *p_bssid = NULL, *p_token = NULL;
     uint8_t dev_type_ver;
     uint8_t ie_idx = 0;
+    uint8_t token_len = 0;
+    uint8_t token_type = 0;
+    uint8_t region_id;
 
-    /* ignore ie hdr: 221, len, oui[3], type(0xAB) */
-#define REGISTRAR_IE_HDR    (6)
-    ie_idx += REGISTRAR_IE_HDR;
-    if ((ie[ie_idx] & 0x0F) != WLAN_VENDOR_DEVTYPE_ALINK_CLOUD) {
-        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "registrar(devtype/ver=%d not supported", ie[ie_idx]);
+    // ie[0] - Vendor Spec Element(221)
+    // ie[1] - ie length
+    // ie[2..4] - OUI
+    // ie[5] - OUI type
+    // ie[6] - Version&DevType
+    // ie[7] - Length of Sign
+    // ie[8..x] - Sign
+    // ie[x+1] - Frame Type (0)
+    // ie[x+2] - Length of SSID
+    // ie[x+3..y] - SSID
+    // ie[y+1] - Length of passwd
+    // ie[y+2..z] - passwd
+    // ie[z+1..z+6] - BSSID
+    // ie[z+7] - Length of Token
+    // ie[z+8..] - Token
+    // ...... - RFU
+
+    ie_idx += WLAN_VENDOR_IE_HDR_LEN;
+    if ( (ie_len <= ie_idx) || ((ie[ie_idx] & 0x0F) != WLAN_VENDOR_DEVTYPE_ALINK_CLOUD) ) {
+        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "enr_hdl_regi type=%d unmatch", ie[ie_idx]);
         return STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR;
     }
-
-    ie_idx++;  //skip version
+    //awss_debug("ie_len %d > %d, to get devtype", ie_len, ie_idx);
+    ie_idx++;                                   // skip version
     p_dev_name_sign = ie + ie_idx;
 
-    if (!g_dev_sign || memcmp(g_dev_sign, p_dev_name_sign + 1, p_dev_name_sign[0])) {
+    if ( (ie_len <= ie_idx + ie[ie_idx]) || !g_dev_sign || memcmp(g_dev_sign, p_dev_name_sign + 1, p_dev_name_sign[0])) {
         p_dev_name_sign[p_dev_name_sign[0]] = '\0';
-        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "dev_name not match");
-        awss_debug("expect:");
-        if (g_dev_sign) dump_hex(g_dev_sign, p_dev_name_sign[0], 16);
-        awss_debug("\r\nbut recv:");
-        dump_hex(p_dev_name_sign + 1, p_dev_name_sign[0], 16);
+        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "enr_hdl_regi dn unmatch");
+        //awss_debug("expect:");
+        //if (g_dev_sign) zconfig_dump_hex(g_dev_sign, p_dev_name_sign[0], 16);
+        //awss_debug("\r\nbut recv:");
+        //zconfig_dump_hex(p_dev_name_sign + 1, p_dev_name_sign[0], 16);
         return STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR;
     }
-    ie_idx += ie[ie_idx] + 1;  // eating device name sign length & device name sign[n]
+    //awss_debug("ie_len %d > %d, to get sign", ie_len, ie_idx + ie[ie_idx]);
+    ie_idx += ie[ie_idx] + 1;                   // eating sign_len & sign[n]
 
-    if (ie[ie_idx] != REGISTRAR_FRAME_TYPE) {
-        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "registrar(frametype=%d not supported", ie[ie_idx]);
+    if ( (ie_len <= ie_idx) || (ie[ie_idx] != REGISTRAR_FRAME_TYPE) ) {
+        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "enr_hdl_regi frametype=%d unmatch", ie[ie_idx]);
         return STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR;
     }
-
-    ie_idx++;  // eating frame type
+    //awss_debug("ie_len %d > %d, to get frametype", ie_len, ie_idx);
+    ie_idx++;                                   // eating frame type
     p_ssid = ie + ie_idx;
-    if (ie[ie_idx] >= OS_MAX_SSID_LEN) {
-        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "registrar(ssidlen=%d invalid", ie[ie_idx]);
+    if ( (ie_len <= ie_idx + ie[ie_idx]) || (ie[ie_idx] >= OS_MAX_SSID_LEN) ) {
+        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "enr_hdl_regi ssidlen=%d out of range", ie[ie_idx]);
         return STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR;
     }
+    //awss_debug("ie_len %d > %d, to get ssid", ie_len, ie_idx + ie[ie_idx]);
     memcpy(tmp_ssid, &p_ssid[1], p_ssid[0]);
-    awss_debug("Registrar ssid:%s", tmp_ssid);
+    awss_debug("enr_hdl_regi ssid:%s", tmp_ssid);
 
-    ie_idx += ie[ie_idx] + 1;  // eating ssid_len & ssid[n]
+    ie_idx += ie[ie_idx] + 1;                   // eating ssid_len & ssid[n]
 
     p_passwd = ie + ie_idx;
-    if (p_passwd[0] >= OS_MAX_PASSWD_LEN) {
-        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "registrar(passwdlen=%d invalid!", p_passwd[0]);
+    if ( (ie_len <= ie_idx + ie[ie_idx]) || p_passwd[0] >= OS_MAX_PASSWD_LEN) {
+        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "enr_hdl_regi passwdlen=%d out of range", p_passwd[0]);
         return STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR;
     }
-
-    ie_idx += ie[ie_idx] + 1;  // eating passwd_len & passwd
-
+    //awss_debug("ie_len %d > %d, to get pwd", ie_len, ie_idx + ie[ie_idx]);
+    ie_idx += ie[ie_idx] + 1;                   // eating passwd_len & passwd
+    if ( ie_len < ie_idx + ETH_ALEN) {
+        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "enr_hdl_regi bssid out of range");
+        return STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR;
+    }
+    //awss_debug("ie_len %d >= %d, to get bssid", ie_len, ie_idx + ETH_ALEN);
     p_bssid = ie + ie_idx;
-    ie_idx += ETH_ALEN;  // eating bssid len
+    ie_idx += ETH_ALEN;                         // eating bssid len
 
     AWSS_UPDATE_STATIS(AWSS_STATIS_ZCONFIG_IDX, AWSS_STATIS_TYPE_TIME_START);
 
     aes_decrypt_string((char *)p_passwd + 1, (char *)tmp_passwd, p_passwd[0],
-            1, os_get_conn_encrypt_type(), 0, (const char *)aes_random); //aes128 cfb
-    if (is_utf8((const char *)tmp_passwd, p_passwd[0]) != 1) {
+            1, os_get_conn_encrypt_type(), 0, (const char *)g_aes_random); //aes128 cfb
+    if (zconfig_is_utf8((const char *)tmp_passwd, p_passwd[0]) != 1) {
         AWSS_UPDATE_STATIS(AWSS_STATIS_ZCONFIG_IDX, AWSS_STATIS_TYPE_PASSWD_ERR);
-        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "registrar(passwd invalid");
+        dump_awss_status(STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR, "enr_hdl_regi(passwd invalid");
         return STATE_WIFI_ZCONFIG_REGISTAR_PARAMS_ERROR;
     }
-    awss_debug("ssid:%s\r\n", tmp_ssid);
 
     strncpy((char *)out_passwd, (const char *)tmp_passwd, OS_MAX_PASSWD_LEN - 1);
     strncpy((char *)out_ssid, (const char *)tmp_ssid, OS_MAX_SSID_LEN - 1);
     memcpy((char *)out_bssid, (char *)p_bssid, ETH_ALEN);
-#ifdef AWSS_ZCONFIG_APPTOKEN
-    awss_debug("ie_idx %d, ie_len %d", ie_idx, ie_len);
-    if (ie_idx < ie_len) {
-        p_token = ie + ie_idx;
-        if (p_token[0] == ZC_MAX_TOKEN_LEN) {
-            memcpy((char *)out_token, (char *)(p_token + 1), ZC_MAX_TOKEN_LEN);
-        }
+
+    if (ie_len <= ie_idx + ie[ie_idx]) {
+        awss_debug("enr_hdl_regi:token out of range");
+        return 0;
     }
-    
-#endif
+    //awss_debug("ie_len %d > %d, to get token", ie_len, ie_idx + ie[ie_idx]);
+    token_len = ie[ie_idx];
+    if (token_len) {
+        memcpy((char *)out_token, (char *)(ie + ie_idx + 1), token_len);
+    }
+    ie_idx += ie[ie_idx] + 1;                   // eating token
+
+    if (ie_len <= ie_idx) {
+        awss_debug("enr_hdl_regi:no token type");
+        return 0;
+    }
+    //awss_debug("ie_len %d > %d, to get token type", ie_len, ie_idx);
+    token_type = ie[ie_idx];
+    *out_token_type = token_type;
+    if (token_len) {
+        awss_set_token(out_token, token_type);
+    }
+    ie_idx++;                                   // eating token type  
+    if (ie_len <= ie_idx) {
+        awss_debug("enr_hdl_regi:no region ID");
+        iotx_guider_set_dynamic_region(IOTX_CLOUD_REGION_INVALID);
+        return 0;
+    }
+    //awss_debug("ie_len %d > %d, to get region id", ie_len, ie_idx);
+    region_id = ie[ie_idx];
+    iotx_guider_set_dynamic_region(region_id);
+    ie_idx++;                                   // eating region id
 
     return 0;/* success */
 }
 
-int awss_ieee80211_zconfig_process(uint8_t *mgmt_header, int len, int link_type, struct parser_res *res, signed char rssi)
+int awss_enrollee_ieee80211_process(uint8_t *mgmt_header, int len, int link_type, struct parser_res *res, signed char rssi)
 {
     const uint8_t *registrar_ie = NULL;
     struct ieee80211_hdr *hdr;
@@ -281,25 +340,26 @@ int awss_ieee80211_zconfig_process(uint8_t *mgmt_header, int len, int link_type,
     res->u.ie.alink_ie_len = len - (registrar_ie - mgmt_header);
     res->u.ie.alink_ie = (uint8_t *)registrar_ie;
 
-    awss_debug("ProbRespA from Registrar");
-    //dump_hex((uint8_t *)registrar_ie, len - (registrar_ie - mgmt_header), 24);
-
+    awss_debug("enr_hdl_regi: rx respA");
+#if ZERO_AWSS_VERBOSE_DBG
+    zconfig_dump_hex((uint8_t *)registrar_ie, len - (registrar_ie - mgmt_header), 24);
+#endif
     return ALINK_ZERO_CONFIG;
 }
 
-int awss_recv_callback_zconfig(struct parser_res *res)
+int awss_enrollee_recv_callback(struct parser_res *res)
 {
     uint8_t tods = res->tods;
     uint8_t channel = res->channel;
 
     uint8_t *ie = res->u.ie.alink_ie;
-    uint8_t ie_len = ie[1];
+    uint8_t ie_len = ie[IE_POS_IE_LEN] + 2;    // Vendor Spec Element(1 Byte) & ie length(1 Byte)
     int ret;
 
     if (res->u.ie.alink_ie_len < ie_len)
         return PKG_INVALID;
 
-    ret = decrypt_ssid_passwd(ie, ie_len, zc_ssid, zc_passwd, zc_bssid, zc_token);
+    ret = awss_enrollee_decrypt_passwd(ie, ie_len, zc_ssid, zc_passwd, zc_bssid, zc_token, zc_token_type);
     if (ret)
         return PKG_INVALID;
 

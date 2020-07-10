@@ -210,7 +210,7 @@ static int get_ssid_passwd_from_w(uint8_t *in, int total_len, uint8_t *src, uint
             aes_decrypt_string((char *)passwd_cipher, (char *)tmp_passwd, passwd_len,
                     1, os_get_encrypt_type(), 0, NULL);
             os_free(passwd_cipher);
-            if (is_utf8((const char *)tmp_passwd, passwd_len) == 0) {
+            if (zconfig_is_utf8((const char *)tmp_passwd, passwd_len) == 0) {
                 //memset(zconfig_data, 0, sizeof(*zconfig_data));
                 memset(zc_android_src, 0, sizeof(zconfig_data->android_src));
                 memset(zc_pre_ssid, 0, sizeof(zconfig_data->android_pre_ssid));
@@ -342,7 +342,11 @@ chn_locked:
     return PKG_START_FRAME;
 rcv_done:
     AWSS_UPDATE_STATIS(AWSS_STATIS_WPS_IDX, AWSS_STATIS_TYPE_TIME_SUC);
+#ifdef AWSS_SUPPORT_SMARTCONFIG_MCAST
+    zc_got_ssid_passwd_from_p2p = 1;
+#else
     zconfig_set_state(STATE_RCV_DONE, tods, channel);
+#endif
     return PKG_END;
 }
 

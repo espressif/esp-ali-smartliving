@@ -67,7 +67,7 @@ static int CoAPServerPath_2_option(char *uri, CoAPMessage *message)
         return COAP_ERROR_INVALID_PARAM;
     }
     if (256 < strlen(uri)) {
-        COAP_ERR("The uri length is too loog,len = %d", (int)strlen(uri));
+        COAP_ERR("The uri length is too long,len = %d", (int)strlen(uri));
         return COAP_ERROR_INVALID_LENGTH;
     }
     COAP_DEBUG("The uri is %s", uri);

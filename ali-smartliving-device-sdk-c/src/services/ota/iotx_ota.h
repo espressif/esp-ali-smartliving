@@ -9,5 +9,6 @@ int iotx_ota_get_config(void *handle, const char *configScope, const char *getTy
                         const char *attributeKeys);
 
 int iotx_req_image(void *handle, const char *version);
+int iotx_ota_download(void *pcontext, const char *payload, unsigned int payload_len);
 
 #endif  /* #ifndef __IOTX_OTA_H__ */

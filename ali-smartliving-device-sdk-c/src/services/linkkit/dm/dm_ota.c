@@ -11,6 +11,16 @@ static dm_ota_ctx_t *_dm_ota_get_ctx(void)
     return &g_dm_ota_ctx;
 }
 
+int dm_ota_download(char *payload, unsigned int payload_len)
+{
+    if (g_dm_ota_ctx.ota_handle)
+    {
+        return iotx_ota_download(g_dm_ota_ctx.ota_handle, (const char*)payload, payload_len);
+    }
+
+    return -1;
+}
+
 int dm_ota_init(void)
 {
     dm_ota_ctx_t *ctx = _dm_ota_get_ctx();

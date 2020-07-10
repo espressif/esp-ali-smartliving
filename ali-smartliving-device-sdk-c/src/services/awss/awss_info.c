@@ -112,7 +112,7 @@ int process_get_device_info(void *ctx, void *resource, void *remote, void *reque
         memcpy(req_msg_id, id, id_len);
 
     if (type == AWSS_NOTIFY_DEV_RAND_SIGN) {
-        dump_awss_status(STATE_WIFI_GOT_DEVINFO_QUERY, NULL);
+        dump_awss_status(STATE_WIFI_GOT_DEVINFO_QUERY, "app get devinfo");
         topic_fmt = is_mcast ? TOPIC_AWSS_GETDEVICEINFO_MCAST : TOPIC_AWSS_GETDEVICEINFO_UCAST;
     } else if (type == AWSS_NOTIFY_SUCCESS) {
         topic_fmt = is_mcast ? TOPIC_AWSS_GET_CONNECTAP_INFO_MCAST : TOPIC_AWSS_GET_CONNECTAP_INFO_UCAST;

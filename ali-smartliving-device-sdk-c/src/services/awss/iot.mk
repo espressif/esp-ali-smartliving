@@ -15,8 +15,8 @@ ifneq (,$(filter -DWIFI_PROVISION_ENABLED,$(CFLAGS)))
 
     ifneq (,$(filter -DAWSS_SUPPORT_SMARTCONFIG,$(CFLAGS)))
         CFLAGS  += -DAWSS_SUPPORT_SMARTCONFIG \
-                   -DAWSS_SUPPORT_SMARTCONFIG_MCAST \
-                   -DAWSS_SUPPORT_SMARTCONFIG_WPS
+                   -DAWSS_SUPPORT_SMARTCONFIG_WPS \
+                   -DAWSS_SUPPORT_SMARTCONFIG_MCAST
     endif
 
     ifneq (,$(filter -DAWSS_SUPPORT_PHONEASAP,$(CFLAGS)))

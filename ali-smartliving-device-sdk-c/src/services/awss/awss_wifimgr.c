@@ -33,7 +33,8 @@
 #define DEV_SIMPLE_ACK_LEN      (64)
 
 #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
-extern "C" {
+extern "C"
+{
 #endif
 
 static char g_req_msg_id[MSG_REQ_ID_LEN];
@@ -85,7 +86,7 @@ static void wifimgr_scan_tx_wifilist()
         }
         list_del(&item->entry);
         os_free(item);
-        item = NULL;
+        item= NULL;
     }
     HAL_MutexUnlock(g_scan_mutex);
 }
@@ -126,7 +127,7 @@ static int awss_scan_cb(const char ssid[PLATFORM_MAX_SSID_LEN],
             } else {
                 snprintf(other_apinfo, 64 - 1, "\"auth\":\"%d\"", auth);
             }
-            if (is_utf8(ssid, ssid_len)) {
+            if (zconfig_is_utf8(ssid, ssid_len)) {
                 strncpy(encode_ssid, (const char *)ssid, ssid_len);
                 msg_len += snprintf(aplist + msg_len, WIFI_APINFO_LIST_LEN - msg_len - 1,
                                     "{\"ssid\":\"%s\",\"bssid\":\"%02X:%02X:%02X:%02X:%02X:%02X\",\"rssi\":\"%d\",%s},",
@@ -365,7 +366,7 @@ int wifimgr_process_switch_ap_request(void *ctx, void *resource, void *remote, v
                 char encoded[PLATFORM_MAX_PASSWD_LEN * 2 + 1] = {0};
                 memcpy(encoded, str, str_len);
                 aes_decrypt_string(encoded, passwd, str_len,
-                                   0, os_get_conn_encrypt_type(), 1, (const char *)aes_random);
+                                   0, os_get_conn_encrypt_type(), 1, (const char *)g_aes_random);
             } else {
                 snprintf(msg, sizeof(msg) - 1, AWSS_ACK_FMT, req_msg_id, -3, "\"passwd len error\"");
                 AWSS_UPDATE_STATIS(AWSS_STATIS_PAP_IDX, AWSS_STATIS_TYPE_PASSWD_ERR);
@@ -373,7 +374,7 @@ int wifimgr_process_switch_ap_request(void *ctx, void *resource, void *remote, v
             }
         }
 
-        if (success && is_utf8(passwd, strlen(passwd)) == 0) {
+        if (success && zconfig_is_utf8(passwd, strlen(passwd)) == 0) {
             snprintf(msg, sizeof(msg) - 1, AWSS_ACK_FMT, req_msg_id,
                      enc_lvl == SEC_LVL_OPEN ? -2 : -3, "\"passwd content error\"");
             AWSS_UPDATE_STATIS(AWSS_STATIS_PAP_IDX, AWSS_STATIS_TYPE_PASSWD_ERR);
@@ -421,7 +422,7 @@ int wifimgr_process_switch_ap_request(void *ctx, void *resource, void *remote, v
                                 (uint8_t *)bssid, 0)) {*/
 
     if (0 != awss_connect(ssid, passwd, (uint8_t *)bssid, ETH_ALEN, token_found == 1 ? token : NULL,
-                          token_found == 1 ? RANDOM_MAX_LEN : 0)) {
+                          token_found == 1 ? RANDOM_MAX_LEN : 0, 0)) {
     } else {
         AWSS_UPDATE_STATIS(AWSS_STATIS_CONN_ROUTER_IDX, AWSS_STATIS_TYPE_TIME_SUC);
         AWSS_UPDATE_STATIS(AWSS_STATIS_PAP_IDX, AWSS_STATIS_TYPE_TIME_SUC);
@@ -439,7 +440,7 @@ int wifimgr_process_switch_ap_request(void *ctx, void *resource, void *remote, v
         zconfig_force_destroy();
 
         if (token_found == 0) {
-            produce_random(aes_random, sizeof(aes_random));
+            produce_random(g_aes_random, sizeof(g_aes_random));
         }
     }
     awss_debug("connect '%s' %s\r\n", ssid, switch_ap_done == 1 ? "success" : "fail");

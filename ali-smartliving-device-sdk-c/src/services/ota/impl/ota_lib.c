@@ -148,7 +148,7 @@ int otalib_GetParams(const char *json_doc, uint32_t json_len, char **url, char *
                      uint32_t *file_size)
 {
 #define OTA_FILESIZE_STR_LEN    (16)
-    char file_size_str[OTA_FILESIZE_STR_LEN + 1];
+    char file_size_str[OTA_FILESIZE_STR_LEN + 1] = {0};
 
     /* get version */
     if (0 != otalib_GetFirmwareVarlenPara(json_doc, json_len, "version", version)) {
@@ -224,54 +224,6 @@ int otalib_GetConfigParams(const char *json_doc, uint32_t json_len, char **confi
         OTA_LOG_ERROR("get value of getType key failed");
         return -1;
     }
-    return 0;
-
-#undef OTA_FILESIZE_STR_LEN
-}
-
-int otalib_GetFotaParams(const char *json_doc, uint32_t json_len, char **version, uint32_t *file_size, char **sign,
-                           char **signMethod, char **url, char **digestsign)
-{
-#define OTA_FILESIZE_STR_LEN    (16)
-    char file_size_str[OTA_FILESIZE_STR_LEN + 1];
-
-    /* get version */
-    if (0 != otalib_GetFirmwareVarlenPara(json_doc, json_len, "version", version)) {
-        OTA_LOG_ERROR("get value of version failed");
-        return -1;
-    }
-
-    /* get file size */
-    if (0 != otalib_GetFirmwareFixlenPara(json_doc, json_len, "size", file_size_str, OTA_FILESIZE_STR_LEN)) {
-        OTA_LOG_ERROR("get value of size key failed");
-        return -1;
-    }
-    file_size_str[OTA_FILESIZE_STR_LEN] = '\0';
-    *file_size = atoi(file_size_str);
-
-    /* get sign */
-    if (0 != otalib_GetFirmwareVarlenPara(json_doc, json_len, "sign", sign)) {
-        OTA_LOG_ERROR("get value of sign key failed");
-        return -1;
-    }
-
-    /* get signMethod */
-    if (0 != otalib_GetFirmwareVarlenPara(json_doc, json_len, "signMethod", signMethod)) {
-        OTA_LOG_ERROR("get value of signMethod key failed");
-        return -1;
-    }
-
-    /* get url */
-    if (0 != otalib_GetFirmwareVarlenPara(json_doc, json_len, "url", url)) {
-        OTA_LOG_ERROR("get value of url key failed");
-        return -1;
-    }
-
-    /* get digestsign */
-    if (0 != otalib_GetFirmwareVarlenPara(json_doc, json_len, "digestSign", digestsign)) {
-        OTA_LOG_ERROR("get value of digestSign key failed, maybe not security ota");
-    }
-
     return 0;
 
 #undef OTA_FILESIZE_STR_LEN

@@ -5,10 +5,16 @@
 #ifdef DEV_ERRCODE_ENABLE
 #include "dev_diagnosis_log.h"
 #include "dev_errcode.h"
+#ifdef EN_COMBO_NET
+//#include "breeze_export.h"
+#endif
 
 static uint16_t g_last_errcode = 0;
 
-static uint16_t dev_errcode_sdk_filter(const int state_code);
+#ifdef EN_COMBO_NET
+extern char g_ble_state;
+extern uint32_t breeze_post(uint8_t *buffer, uint32_t length);
+#endif
 
 void dev_errcode_module_init()
 {
@@ -26,10 +32,31 @@ int dev_errcode_handle(const int state_code, const char *state_message)
 {
     uint16_t err_code = 0;
     char err_msg[DEV_ERRCODE_MSG_MAX_LEN + 8] = {0};
+#ifdef EN_COMBO_NET
+    uint8_t ble_rsp[DEV_ERRCODE_MSG_MAX_LEN + 8] = {0};
+    uint8_t ble_rsp_idx = 0;
+#endif
+
     err_code = dev_errcode_sdk_filter(state_code);
     if (err_code > 0) 
     {
         diagnosis_err("err_code %d, state_code:-0x%04x, str_msg=%s", err_code, -state_code, state_message == NULL ? "NULL" : state_message);
+#ifdef EN_COMBO_NET
+        if(g_ble_state){
+            ble_rsp[ble_rsp_idx++] = 0x01;                          // Notify Code Type
+            ble_rsp[ble_rsp_idx++] = 0x01;                          // Notify Code Length
+            ble_rsp[ble_rsp_idx++] = 0x02;                          // Notify Code Value, 0x02-fail
+            //ble_rsp[ble_rsp_idx++] = 0x02;                          // Notify Msg Type
+            //ble_rsp[ble_rsp_idx++] = strlen(state_message);         // Notify Msg Length
+            //memcpy(ble_rsp + ble_rsp_idx, state_message, strlen(state_message));    // Notify Msg Value
+            //ble_rsp_idx += strlen(state_message);
+            ble_rsp[ble_rsp_idx++] = 0x03;                          // Notify SubErrcode Type
+            ble_rsp[ble_rsp_idx++] = sizeof(err_code);              // Notify SubErrcode Length
+            memcpy(ble_rsp + ble_rsp_idx, (uint8_t *)&err_code, sizeof(err_code));  // Notify SubErrcode Value
+            ble_rsp_idx += sizeof(err_code);
+            breeze_post(ble_rsp, ble_rsp_idx);
+        }
+#endif
         if (err_code != g_last_errcode) {
             HAL_Snprintf(err_msg, DEV_ERRCODE_MSG_MAX_LEN + 8, "-0x%04x,%s",-state_code , state_message == NULL ? "NULL" : state_message);
             if (0 == dev_errcode_kv_set(err_code, err_msg)) {
@@ -40,7 +67,7 @@ int dev_errcode_handle(const int state_code, const char *state_message)
     return 0;
 }
 
-static uint16_t dev_errcode_sdk_filter(const int state_code)
+uint16_t dev_errcode_sdk_filter(const int state_code)
 {
     uint16_t err_code = 0;
 #ifdef DEV_STATEMACHINE_ENABLE
@@ -107,6 +134,18 @@ static uint16_t dev_errcode_sdk_filter(const int state_code)
             break;
         case STATE_WIFI_SENT_CONNECTAP_NOTI_TIMEOUT:
             err_code = DEV_ERRCODE_AP_CONN_LOCAL_NOTI_FAIL;
+            break;
+        case STATE_WIFI_AP_DISCOVER_FAIL:
+            err_code = DEV_ERRCODE_AP_DISCOVER_FAIL;
+            break;
+        case STATE_WIFI_AP_RSSI_TOO_LOW:
+            err_code = DEV_ERRCODE_AP_RSSI_TOO_LOW;
+            break;
+        case STATE_WIFI_AP_CONN_AUTH_FAIL:
+            err_code = DEV_ERRCODE_AP_CONN_AUTH_FAIL;
+            break;
+        case STATE_WIFI_AP_CONN_IP_GET_FAIL:
+            err_code = DEV_ERRCODE_IP_ADDR_GET_FAIL;
             break;
 
         /* Cloud Connect */

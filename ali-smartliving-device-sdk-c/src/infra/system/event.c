@@ -12,6 +12,7 @@ static impl_event_map_t g_impl_event_map[] = {
     {ITE_CONNECT_FAIL,         NULL},
     {ITE_DISCONNECTED,         NULL},
     {ITE_REDIRECT,             NULL},
+    {ITE_OFFLINE_RESET,        NULL},
     {ITE_RAWDATA_ARRIVED,      NULL},
 #ifndef LINK_VISUAL_ENABLE
     {ITE_SERVICE_REQUEST,      NULL},
@@ -24,6 +25,7 @@ static impl_event_map_t g_impl_event_map[] = {
     {ITE_TRIGGER_EVENT_REPLY,  NULL},
     {ITE_TIMESTAMP_REPLY,      NULL},
     {ITE_TOPOLIST_REPLY,       NULL},
+    {ITE_TOPO_CHANGE,          NULL},
     {ITE_SUBDEV_MISC_OPS,      NULL},
     {ITE_PERMIT_JOIN,          NULL},
     {ITE_INITIALIZE_COMPLETED, NULL},
@@ -66,12 +68,13 @@ DEFINE_EVENT_CALLBACK(ITE_CONNECT_SUCC,         int (*callback)(void))
 DEFINE_EVENT_CALLBACK(ITE_CONNECT_FAIL,         int (*callback)(void))
 DEFINE_EVENT_CALLBACK(ITE_DISCONNECTED,         int (*callback)(void))
 DEFINE_EVENT_CALLBACK(ITE_REDIRECT,             int (*callback)(void))
+DEFINE_EVENT_CALLBACK(ITE_OFFLINE_RESET,        int (*callback)(void))
 DEFINE_EVENT_CALLBACK(ITE_RAWDATA_ARRIVED,      int (*callback)(const int, const unsigned char *, const int))
 #ifndef LINK_VISUAL_ENABLE
 DEFINE_EVENT_CALLBACK(ITE_SERVICE_REQUEST,       int (*callback)(const int, const char *, const int, const char *,
                       const int, char **, int *))
 #else
-DEFINE_EVENT_CALLBACK(ITE_LINK_VISUAL,          int (*callback)(const int, const char *, const int))
+DEFINE_EVENT_CALLBACK(ITE_LINK_VISUAL,          int (*callback)(const int, const char *, const int, const char *, const int))
 DEFINE_EVENT_CALLBACK(ITE_SERVICE_REQUST,       int (*callback)(const int, const char *, const int,
                         const char *, const int, const char *, const int, char **, int *))
 #endif
@@ -84,7 +87,8 @@ DEFINE_EVENT_CALLBACK(ITE_TRIGGER_EVENT_REPLY,  int (*callback)(const int, const
 DEFINE_EVENT_CALLBACK(ITE_TIMESTAMP_REPLY,      int (*callback)(const char *))
 DEFINE_EVENT_CALLBACK(ITE_TOPOLIST_REPLY,       int (*callback)(const int, const int, const int, const char *,
                       const int))
-DEFINE_EVENT_CALLBACK(ITE_SUBDEV_MISC_OPS,       int (*callback)(const int, const int, const int, const char *,
+DEFINE_EVENT_CALLBACK(ITE_TOPO_CHANGE,          int (*callback)(const int, const char *, const int))
+DEFINE_EVENT_CALLBACK(ITE_SUBDEV_MISC_OPS,      int (*callback)(const int, const int, const int, const char *,
                       const int))
 DEFINE_EVENT_CALLBACK(ITE_PERMIT_JOIN,          int (*callback)(const char *, int))
 DEFINE_EVENT_CALLBACK(ITE_INITIALIZE_COMPLETED, int (*callback)(const int))

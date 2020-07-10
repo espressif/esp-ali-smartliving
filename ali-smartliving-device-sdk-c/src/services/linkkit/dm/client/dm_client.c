@@ -9,15 +9,20 @@ static dm_client_uri_map_t g_dm_client_uri_map[] = {
     {DM_URI_THING_SERVICE_PROPERTY_SET,       DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL, (void *)dm_client_thing_service_property_set         },
     {DM_URI_THING_SERVICE_REQUEST_WILDCARD,   DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL, (void *)dm_client_thing_service_request              },
 #ifdef LINK_VISUAL_ENABLE
-    {DM_URI_LINK_VISUAL_P2P_DOWNSTREAM,       DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL,     (void *)dm_client_link_visual_p2p_request             },
+    {DM_URI_LINK_VISUAL_WILDCARD_DOWNSTREAM,  DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL,     (void *)dm_client_link_visual_downstream             },
+    {DM_URI_LINK_VISUAL_WILDCARD_INVOKE,      DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL,     (void *)dm_client_link_visual_downstream             },
+    {DM_URI_LINK_VISUAL_WILDCARD_DOWNSTREAM_2,DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL,     (void *)dm_client_link_visual_downstream             },
+    {DM_URI_LINK_VISUAL_WILDCARD_INVOKE_2,    DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL,     (void *)dm_client_link_visual_downstream             },
 #endif
     {DM_URI_THING_DEVICEINFO_UPDATE_REPLY,    DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL, (void *)dm_client_thing_deviceinfo_update_reply      },
     {DM_URI_THING_DEVICEINFO_DELETE_REPLY,    DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL, (void *)dm_client_thing_deviceinfo_delete_reply      },
+#endif
+
     {DM_URI_THING_EVENT_NOTIFY,               DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL, (void *)dm_client_thing_event_notify                 },
     {DM_URI_RRPC_REQUEST_WILDCARD,            DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL, (void *)dm_client_rrpc_request_wildcard              },
     {DM_URI_NTP_RESPONSE,                     DM_URI_EXT_NTP_PREFIX,     IOTX_DM_DEVICE_ALL, (void *)dm_client_ntp_response                       },
     {NULL,                                    DM_URI_EXT_ERROR_PREFIX,   IOTX_DM_DEVICE_ALL, (void *)dm_client_ext_error                          },
-#endif
+
     {DM_URI_THING_MODEL_DOWN_RAW,             DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL, (void *)dm_client_thing_model_down_raw               },
     {DM_URI_THING_MODEL_UP_RAW_REPLY,         DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_ALL, (void *)dm_client_thing_model_up_raw_reply           },
 
@@ -34,6 +39,7 @@ static dm_client_uri_map_t g_dm_client_uri_map[] = {
     {DM_URI_THING_TOPO_DELETE_REPLY,          DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_GATEWAY, (void *)dm_client_thing_topo_delete_reply            },
     {DM_URI_THING_SUB_RESET_REPLY,            DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_GATEWAY, (void *)dm_client_thing_sub_reset_reply              },
     {DM_URI_THING_TOPO_GET_REPLY,             DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_GATEWAY, (void *)dm_client_thing_topo_get_reply               },
+    //{DM_URI_THING_TOPO_CHANGE,                DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_GATEWAY, (void *)dm_client_thing_topo_change               },
     {DM_URI_THING_LIST_FOUND_REPLY,           DM_URI_SYS_PREFIX,         IOTX_DM_DEVICE_GATEWAY, (void *)dm_client_thing_list_found_reply             },
     {DM_URI_COMBINE_LOGIN_REPLY,              DM_URI_EXT_SESSION_PREFIX, IOTX_DM_DEVICE_GATEWAY, (void *)dm_client_combine_login_reply                },
     {DM_URI_COMBINE_LOGOUT_REPLY,             DM_URI_EXT_SESSION_PREFIX, IOTX_DM_DEVICE_GATEWAY, (void *)dm_client_combine_logout_reply               },
@@ -129,7 +135,10 @@ int dm_client_subscribe_all(int devid, char product_key[IOTX_PRODUCT_KEY_LEN + 1
 
 static void _dm_client_event_cloud_connected_handle(void)
 {
-
+#ifdef MQTT_SHADOW
+    //do first time update in iotx_dm_connect as no ctx init there.
+    dm_shadow_update();
+#endif
     dm_log_info("IOTX_CM_EVENT_CLOUD_CONNECTED");
     dm_msg_cloud_connected();
 }
@@ -232,6 +241,113 @@ void dm_client_thing_service_property_set(int fd, const char *topic, const char 
     }
 }
 
+#ifdef DM_UNIFIED_SERVICE_POST
+void dm_client_unified_service_post_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
+                                      void *context)
+{
+    dm_msg_source_t source;
+
+    memset(&source, 0, sizeof(dm_msg_source_t));
+
+    source.uri = topic;
+    source.payload = (unsigned char *)payload;
+    source.payload_len = payload_len;
+    source.context = NULL;
+
+    dm_msg_proc_unified_service_post_reply(&source);
+}
+#endif
+
+#ifdef LINK_VISUAL_ENABLE
+void dm_client_link_visual_downstream(int fd, const char *topic, const char *payload, unsigned int payload_len,
+                                      void *context)
+{
+    dm_msg_source_t source;
+    memset(&source, 0, sizeof(dm_msg_source_t));
+    source.uri = topic;
+    source.payload = (unsigned char *)payload;
+    source.payload_len = payload_len;
+    source.context = NULL;
+    dm_msg_proc_thing_model_link_visual(&source);
+}
+#endif
+
+void dm_client_thing_service_request(int fd, const char *topic, const char *payload, unsigned int payload_len,
+                                     void *context)
+{
+    dm_msg_source_t source;
+
+    memset(&source, 0, sizeof(dm_msg_source_t));
+
+    source.uri = topic;
+    source.payload = (unsigned char *)payload;
+    source.payload_len = payload_len;
+    source.context = NULL;
+
+    dm_msg_proc_thing_service_request(&source);
+}
+
+void dm_client_thing_event_post_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
+                                      void *context)
+{
+    dm_msg_source_t source;
+
+    memset(&source, 0, sizeof(dm_msg_source_t));
+
+    source.uri = topic;
+    source.payload = (unsigned char *)payload;
+    source.payload_len = payload_len;
+    source.context = NULL;
+
+    dm_msg_proc_thing_event_post_reply(&source);
+}
+
+void dm_client_thing_deviceinfo_update_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
+        void *context)
+{
+    dm_msg_source_t source;
+
+    memset(&source, 0, sizeof(dm_msg_source_t));
+
+    source.uri = topic;
+    source.payload = (unsigned char *)payload;
+    source.payload_len = payload_len;
+    source.context = NULL;
+
+    dm_msg_proc_thing_deviceinfo_update_reply(&source);
+}
+
+void dm_client_thing_deviceinfo_delete_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
+        void *context)
+{
+    dm_msg_source_t source;
+
+    memset(&source, 0, sizeof(dm_msg_source_t));
+
+    source.uri = topic;
+    source.payload = (unsigned char *)payload;
+    source.payload_len = payload_len;
+    source.context = NULL;
+
+    dm_msg_proc_thing_deviceinfo_delete_reply(&source);
+}
+#endif /*end of DEVICE_MODEL_RAWDATA_SOLO*/
+
+void dm_client_thing_event_notify_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
+                                      void *context)
+{
+    dm_msg_source_t source;
+
+    memset(&source, 0, sizeof(dm_msg_source_t));
+
+    source.uri = topic;
+    source.payload = (unsigned char *)payload;
+    source.payload_len = payload_len;
+    source.context = NULL;
+
+    dm_msg_proc_thing_event_notify_reply(&source);
+}
+
 void dm_client_thing_event_notify(int fd, const char *topic, const char *payload, unsigned int payload_len,
         void *context)
 {
@@ -270,111 +386,6 @@ void dm_client_thing_event_notify(int fd, const char *topic, const char *payload
 #endif
         }
     }
-}
-
-void dm_client_thing_service_request(int fd, const char *topic, const char *payload, unsigned int payload_len,
-                                     void *context)
-{
-    dm_msg_source_t source;
-
-    memset(&source, 0, sizeof(dm_msg_source_t));
-
-    source.uri = topic;
-    source.payload = (unsigned char *)payload;
-    source.payload_len = payload_len;
-    source.context = NULL;
-
-    dm_msg_proc_thing_service_request(&source);
-}
-
-void dm_client_thing_event_post_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
-                                      void *context)
-{
-    dm_msg_source_t source;
-
-    memset(&source, 0, sizeof(dm_msg_source_t));
-
-    source.uri = topic;
-    source.payload = (unsigned char *)payload;
-    source.payload_len = payload_len;
-    source.context = NULL;
-
-    dm_msg_proc_thing_event_post_reply(&source);
-}
-
-#ifdef DM_UNIFIED_SERVICE_POST
-void dm_client_unified_service_post_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
-                                      void *context)
-{
-    dm_msg_source_t source;
-
-    memset(&source, 0, sizeof(dm_msg_source_t));
-
-    source.uri = topic;
-    source.payload = (unsigned char *)payload;
-    source.payload_len = payload_len;
-    source.context = NULL;
-
-    dm_msg_proc_unified_service_post_reply(&source);
-}
-#endif
-
-#ifdef LINK_VISUAL_ENABLE
-void dm_client_link_visual_p2p_request(int fd, const char *topic, const char *payload, unsigned int payload_len,
-                                     void *context)
-{
-    dm_msg_source_t source;
-    memset(&source, 0, sizeof(dm_msg_source_t));
-    source.uri = topic;
-    source.payload = (unsigned char *)payload;
-    source.payload_len = payload_len;
-    source.context = NULL;
-    dm_msg_proc_thing_model_link_visual(&source);
-}
-#endif
-void dm_client_thing_event_notify_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
-                                      void *context)
-{
-    dm_msg_source_t source;
-
-    memset(&source, 0, sizeof(dm_msg_source_t));
-
-    source.uri = topic;
-    source.payload = (unsigned char *)payload;
-    source.payload_len = payload_len;
-    source.context = NULL;
-
-    dm_msg_proc_thing_event_notify_reply(&source);
-}
-
-void dm_client_thing_deviceinfo_update_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
-        void *context)
-{
-    dm_msg_source_t source;
-
-    memset(&source, 0, sizeof(dm_msg_source_t));
-
-    source.uri = topic;
-    source.payload = (unsigned char *)payload;
-    source.payload_len = payload_len;
-    source.context = NULL;
-
-    dm_msg_proc_thing_deviceinfo_update_reply(&source);
-}
-
-void dm_client_thing_deviceinfo_delete_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
-        void *context)
-{
-    dm_msg_source_t source;
-
-    memset(&source, 0, sizeof(dm_msg_source_t));
-
-    source.uri = topic;
-    source.payload = (unsigned char *)payload;
-    source.payload_len = payload_len;
-    source.context = NULL;
-
-    dm_msg_proc_thing_deviceinfo_delete_reply(&source);
 }
 
 void dm_client_rrpc_request_wildcard(int fd, const char *topic, const char *payload, unsigned int payload_len,
@@ -419,9 +430,33 @@ void dm_client_ext_error(int fd, const char *topic, const char *payload, unsigne
 
     dm_disp_ext_error_response(&source);
 }
-#endif
 
 #ifdef DEVICE_MODEL_GATEWAY
+int dm_client_subdev_unsubscribe(char product_key[PRODUCT_KEY_MAXLEN], char device_name[DEVICE_NAME_MAXLEN])
+{
+    int res = 0, index = 0;
+    int number = sizeof(g_dm_client_uri_map) / sizeof(dm_client_uri_map_t);
+    char *uri = NULL;
+
+    for (index = 0; index < number; index++) {
+        if ((g_dm_client_uri_map[index].dev_type & IOTX_DM_DEVICE_SUBDEV) == 0) {
+            continue;
+        }
+
+        res = dm_utils_service_name((char *)g_dm_client_uri_map[index].uri_prefix, (char *)g_dm_client_uri_map[index].uri_name,
+                                    product_key, device_name, &uri);
+        if (res < SUCCESS_RETURN) {
+            index--;
+            continue;
+        }
+
+        dm_client_unsubscribe(uri);
+        DM_free(uri);
+    }
+
+    return SUCCESS_RETURN;
+}
+
 void dm_client_thing_topo_add_notify(int fd, const char *topic, const char *payload, unsigned int payload_len,
                                      void *context)
 {
@@ -652,6 +687,35 @@ void dm_client_thing_topo_get_reply(int fd, const char *topic, const char *paylo
     source.context = NULL;
 
     dm_msg_proc_thing_topo_get_reply(&source);
+}
+
+void dm_client_thing_topo_change(int fd, const char *topic, const char *payload, unsigned int payload_len,
+                                    void *context)
+{
+    int res = 0;
+    dm_msg_source_t source;
+    dm_msg_dest_t dest;
+    dm_msg_request_payload_t request;
+    dm_msg_response_t response;
+
+    memset(&source, 0, sizeof(dm_msg_source_t));
+    memset(&dest, 0, sizeof(dm_msg_dest_t));
+    memset(&request, 0, sizeof(dm_msg_request_payload_t));
+    memset(&response, 0, sizeof(dm_msg_response_t));
+
+    source.uri = topic;
+    source.payload = (unsigned char *)payload;
+    source.payload_len = payload_len;
+    source.context = NULL;
+
+    dest.uri_name = DM_URI_THING_TOPO_CHANGE;
+
+    res = dm_msg_proc_thing_topo_change(&source, &dest, &request, &response);
+    if (res < SUCCESS_RETURN) {
+        return;
+    }
+
+    dm_msg_response(DM_MSG_DEST_CLOUD, &request, &response, "{}", strlen("{}"), NULL);
 }
 
 void dm_client_thing_list_found_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,

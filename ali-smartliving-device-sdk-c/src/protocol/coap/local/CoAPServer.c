@@ -39,7 +39,7 @@ static int CoAPServerPath_2_option(char *uri, CoAPMessage *message)
         return COAP_ERROR_INVALID_PARAM;
     }
     if (COAP_MSG_MAX_PATH_LEN <= strlen(uri)) {
-        COAP_ERR("The uri length is too loog,len = %d", (int)strlen(uri));
+        COAP_ERR("The uri length is too long,len = %d", (int)strlen(uri));
         return COAP_ERROR_INVALID_LENGTH;
     }
 
@@ -252,7 +252,8 @@ int CoAPServerMultiCast_send(CoAPContext *context, NetworkAddr *remote, const ch
     tokenlen = CoAPServerToken_get(token);
     CoAPMessageToken_set(&message, token, tokenlen);
     CoAPMessageHandler_set(&message, callback);
-    CoAPMessageKeep_Set(&message, 1);
+    if(strcmp(uri, "/dev/core/service/dev/tick_notify") != 0)
+        CoAPMessageKeep_Set(&message, 1);
 
     CoAPServerPath_2_option((char *)uri, &message);
     CoAPUintOption_add(&message, COAP_OPTION_CONTENT_FORMAT, COAP_CT_APP_JSON);

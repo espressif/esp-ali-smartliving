@@ -12,6 +12,8 @@ typedef struct {
     void (*free)(void *ptr);
 } ssl_hooks_t;
 
+DLL_HAL_API int HAL_SSL_Del_KV_Session_Ticket(void);
+
 /**
  * @brief Set malloc/free function.
  *

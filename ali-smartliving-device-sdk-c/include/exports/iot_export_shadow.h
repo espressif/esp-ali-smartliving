@@ -60,6 +60,13 @@ typedef void (*iotx_push_cb_fpt)(
 struct iotx_shadow_attr_st;
 
 typedef void (*iotx_shadow_attr_cb_t)(struct iotx_shadow_attr_st *pattr);
+
+typedef enum{
+    SHADOW_DOWNSTREAM_METHOD_IGNORE,
+    SHADOW_DOWNSTREAM_METHOD_CONTROL,
+    SHADOW_DOWNSTREAM_METHOD_REPLY,
+}shadow_downstream_method_type;
+
 typedef struct iotx_shadow_attr_st {
     iotx_shadow_datamode_t mode;            /* data mode */
     const char *pattr_name;                 /* attribute name */
@@ -67,6 +74,8 @@ typedef struct iotx_shadow_attr_st {
     iotx_shadow_attr_datatype_t attr_type;  /* data type */
     uint32_t timestamp;                     /* timestamp in Epoch(Unix) format */
     iotx_shadow_attr_cb_t callback;         /* callback when related control message come. */
+    char flag_update;
+    shadow_downstream_method_type method_type;
 } iotx_shadow_attr_t, *iotx_shadow_attr_pt;
 
 typedef struct {

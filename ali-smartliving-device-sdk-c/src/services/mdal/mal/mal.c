@@ -861,11 +861,11 @@ int iotx_mdal_get_auth_username_passwd(char* username, char* password)
                       sizeof(guider_sign), timestamp_str);
 
     /* fill up username and password */
-    _fill_conn_string(username, 64,
+    iotx_guider_fill_conn_string(username, 64,
                       "%s&%s",
                       device_name,
                       product_key);
-    _fill_conn_string(password, 64,
+    iotx_guider_fill_conn_string(password, 64,
                       "%s",
                       guider_sign);
     return 0;

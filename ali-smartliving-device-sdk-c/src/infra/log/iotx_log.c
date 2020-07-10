@@ -49,7 +49,7 @@ void LITE_syslog_routine(char *m, const char *f, const int l, const int level, c
 
 #if !defined(_WIN32)
     LITE_printf("%s%s", "\033", lvl_color[level]);
-    LITE_printf(LOG_PREFIX_FMT, lvl_names[level], f, l);
+    LITE_printf(LOG_PREFIX_FMT, lvl_names[level], (unsigned)HAL_UptimeMs(), f, l);
 #endif  /* #if !defined(_WIN32) */
 
     memset(tmpbuf, 0, sizeof(logcb.text_buf));
@@ -126,7 +126,7 @@ void LITE_rich_hexdump(const char *f, const int l,
     }
 
     LITE_printf("%s%s", "\033", lvl_color[level]);
-    LITE_printf(LOG_PREFIX_FMT, lvl_names[level], f, l);
+    LITE_printf(LOG_PREFIX_FMT, lvl_names[level], (unsigned)HAL_UptimeMs(), f, l);
     LITE_printf("HEXDUMP %s @ %p[%d]\r\n", buf_str, buf_ptr, buf_len);
     LITE_hexdump(buf_str, buf_ptr, buf_len);
 

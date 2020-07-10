@@ -24,21 +24,20 @@ extern const char DM_URI_THING_MODEL_UP_RAW[]                DM_READ_ONLY;
 extern const char DM_URI_THING_MODEL_UP_RAW_REPLY[]          DM_READ_ONLY;
 
 #if !defined(DEVICE_MODEL_RAWDATA_SOLO)
-    extern const char DM_URI_RRPC_REQUEST_WILDCARD[]             DM_READ_ONLY;
     /* From Cloud To Local Request And Response*/
     extern const char DM_URI_THING_SERVICE_PROPERTY_SET[]        DM_READ_ONLY;
     extern const char DM_URI_THING_SERVICE_PROPERTY_SET_REPLY[]  DM_READ_ONLY;
     extern const char DM_URI_THING_SERVICE_PROPERTY_GET[]        DM_READ_ONLY;
     extern const char DM_URI_THING_SERVICE_REQUEST_WILDCARD[]    DM_READ_ONLY;
 #ifdef LINK_VISUAL_ENABLE
-    extern const char DM_URI_LINK_VISUAL_P2P_DOWNSTREAM[]        DM_READ_ONLY;
+    extern const char DM_URI_LINK_VISUAL_WILDCARD_DOWNSTREAM[]   DM_READ_ONLY;
+    extern const char DM_URI_LINK_VISUAL_WILDCARD_INVOKE[]       DM_READ_ONLY;
+    extern const char DM_URI_LINK_VISUAL_WILDCARD_DOWNSTREAM_2[] DM_READ_ONLY;
+    extern const char DM_URI_LINK_VISUAL_WILDCARD_INVOKE_2[]     DM_READ_ONLY;
 #endif
     extern const char DM_URI_THING_SERVICE_REQUEST_WILDCARD2[]   DM_READ_ONLY;
     extern const char DM_URI_THING_SERVICE_REQUEST[]             DM_READ_ONLY;
     extern const char DM_URI_THING_SERVICE_RESPONSE[]            DM_READ_ONLY;
-    extern const char DM_URI_THING_EVENT_NOTIFY[]                DM_READ_ONLY;
-    extern const char DM_URI_THING_EVENT_NOTIFY_REPLY[]          DM_READ_ONLY;
-
 
     /* From Local To Cloud Request And Response*/
     extern const char DM_URI_THING_EVENT_PROPERTY_POST[]         DM_READ_ONLY;
@@ -53,16 +52,19 @@ extern const char DM_URI_THING_MODEL_UP_RAW_REPLY[]          DM_READ_ONLY;
     extern const char DM_URI_THING_DEVICEINFO_UPDATE_REPLY[]     DM_READ_ONLY;
     extern const char DM_URI_THING_DEVICEINFO_DELETE[]           DM_READ_ONLY;
     extern const char DM_URI_THING_DEVICEINFO_DELETE_REPLY[]     DM_READ_ONLY;
-    extern const char DM_URI_THING_DSLTEMPLATE_GET[]             DM_READ_ONLY;
-    extern const char DM_URI_THING_DSLTEMPLATE_GET_REPLY[]       DM_READ_ONLY;
-    extern const char DM_URI_THING_DYNAMICTSL_GET[]              DM_READ_ONLY;
-    extern const char DM_URI_THING_DYNAMICTSL_GET_REPLY[]        DM_READ_ONLY;
-    extern const char DM_URI_NTP_REQUEST[]                       DM_READ_ONLY;
-    extern const char DM_URI_NTP_RESPONSE[]                      DM_READ_ONLY;
-    #ifdef DM_UNIFIED_SERVICE_POST
-    extern const char DM_URI_UNIFIED_SERVICE_POST[]              DM_READ_ONLY;
-    extern const char DM_URI_UNIFIED_SERVICE_POST_REPLY[]        DM_READ_ONLY;
-    #endif
+#endif /* end of DEVICE_MODEL_RAWDATA_SOLO*/
+
+extern const char DM_URI_RRPC_REQUEST_WILDCARD[]             DM_READ_ONLY;
+
+extern const char DM_URI_NTP_REQUEST[]                       DM_READ_ONLY;
+extern const char DM_URI_NTP_RESPONSE[]                      DM_READ_ONLY;
+
+extern const char DM_URI_THING_EVENT_NOTIFY[]                DM_READ_ONLY;
+extern const char DM_URI_THING_EVENT_NOTIFY_REPLY[]          DM_READ_ONLY;
+
+#ifdef DM_UNIFIED_SERVICE_POST
+extern const char DM_URI_UNIFIED_SERVICE_POST[]              DM_READ_ONLY;
+extern const char DM_URI_UNIFIED_SERVICE_POST_REPLY[]        DM_READ_ONLY;
 #endif
 
 extern const char DM_URI_DEV_CORE_SERVICE_DEV[]              DM_READ_ONLY;
@@ -93,6 +95,7 @@ extern const char DM_URI_DEV_CORE_SERVICE_DEV[]              DM_READ_ONLY;
     extern const char DM_URI_THING_SUB_RESET_REPLY[]             DM_READ_ONLY;
     extern const char DM_URI_THING_TOPO_GET[]                    DM_READ_ONLY;
     extern const char DM_URI_THING_TOPO_GET_REPLY[]              DM_READ_ONLY;
+    extern const char DM_URI_THING_TOPO_CHANGE[]                 DM_READ_ONLY;
     extern const char DM_URI_THING_LIST_FOUND[]                  DM_READ_ONLY;
     extern const char DM_URI_THING_LIST_FOUND_REPLY[]            DM_READ_ONLY;
     extern const char DM_URI_COMBINE_LOGIN[]                     DM_READ_ONLY;
@@ -124,19 +127,19 @@ int dm_msg_proc_thing_service_property_post(_IN_ dm_msg_source_t *source, _IN_ d
 int dm_msg_proc_thing_service_request(_IN_ dm_msg_source_t *source);
 int dm_msg_proc_thing_event_post_reply(_IN_ dm_msg_source_t *source);
 
-#ifdef DM_UNIFIED_SERVICE_POST
-int dm_msg_proc_unified_service_post_reply(_IN_ dm_msg_source_t *source);
-#endif
-
 int dm_msg_proc_thing_deviceinfo_update_reply(_IN_ dm_msg_source_t *source);
 int dm_msg_proc_thing_deviceinfo_delete_reply(_IN_ dm_msg_source_t *source);
-int dm_msg_proc_thing_dynamictsl_get_reply(_IN_ dm_msg_source_t *source);
+#endif /* end of DEVICE_MODEL_RAWDATA_SOLO*/
+
 int dm_msg_proc_rrpc_request(_IN_ dm_msg_source_t *source);
 int dm_disp_ntp_response(_IN_ dm_msg_source_t *source);
 int dm_disp_ext_error_response(_IN_ dm_msg_source_t *source);
 int dm_msg_proc_thing_event_notify(_IN_ dm_msg_source_t *source, _IN_ dm_msg_dest_t *dest,
         _OU_ dm_msg_request_payload_t *request, _OU_ dm_msg_response_t *response);
 int dm_msg_proc_thing_event_notify_reply(_IN_ dm_msg_source_t *source);
+
+#ifdef DM_UNIFIED_SERVICE_POST
+int dm_msg_proc_unified_service_post_reply(_IN_ dm_msg_source_t *source);
 #endif
 
 #ifdef DEVICE_MODEL_GATEWAY
@@ -156,6 +159,8 @@ int dm_msg_proc_thing_topo_add_reply(_IN_ dm_msg_source_t *source);
 int dm_msg_proc_thing_sub_reset_reply(_IN_ dm_msg_source_t *source);
 int dm_msg_proc_thing_topo_delete_reply(_IN_ dm_msg_source_t *source);
 int dm_msg_proc_thing_topo_get_reply(_IN_ dm_msg_source_t *source);
+int dm_msg_proc_thing_topo_change(_IN_ dm_msg_source_t *source, _IN_ dm_msg_dest_t *dest,
+                                     _OU_ dm_msg_request_payload_t *request, _OU_ dm_msg_response_t *response);
 int dm_msg_proc_thing_list_found_reply(_IN_ dm_msg_source_t *source);
 int dm_msg_proc_combine_login_reply(_IN_ dm_msg_source_t *source);
 int dm_msg_proc_combine_logout_reply(_IN_ dm_msg_source_t *source);

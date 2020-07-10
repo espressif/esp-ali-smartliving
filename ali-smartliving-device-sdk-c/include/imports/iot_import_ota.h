@@ -45,17 +45,5 @@ DLL_HAL_API int HAL_Firmware_Persistence_Write(_IN_ char *buffer, _IN_ uint32_t 
  */
 DLL_HAL_API int HAL_Firmware_Persistence_Stop(void);
 
-/**
- * @brief check security OTA.
- *
- * @param[in] digest: @n A pointer to digest data.
- * @param[in] sign:   @n A pointer to sign data.
- * @param[in] signMethod: @n A pointer to signMethod data.
- * @return 0: Success; -1: Failure.
- * @see None.
- * @note None.
- */
-DLL_HAL_API int HAL_OTA_Security_check(const char *digest, const char *sign, const char *signMethod);
-
 #endif  /* __IOT_IMPORT_UOTA_H__ */
 

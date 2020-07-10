@@ -35,11 +35,17 @@ int CoAPDeserialize_Token(CoAPMessage *msg, unsigned char *buf)
         (e) -= step;                                       \
         (o) = ((o)) + step;                                \
     }
+
+/*
+ * Used to prevent access to *option when pointing to after end of buffer
+ * after doing a COAP_OPT()
+ */
 #define COAP_OPT_CHECK(o,e,step) do {                  \
         COAP_OPT(o,e,step);                                \
         if ((e) < 1)                                       \
             return -1;                                       \
     } while (0)
+
 static int CoAPDeserialize_Option(CoAPMsgOption *option, unsigned char *buf, int left, unsigned short *predeltas)
 {
     unsigned char  *ptr      = buf;

@@ -17,6 +17,10 @@
     #include <netdb.h>
     #include <signal.h>
     #include <unistd.h>
+    #include <sys/time.h>
+    #include <arpa/nameser.h>
+    #include <resolv.h>
+    #include "dns.h"
 #endif
 #include "mbedtls/error.h"
 #include "mbedtls/ssl.h"
@@ -29,6 +33,7 @@
 #include "utils_hmac.h"
 #include "iot_import.h"
 #include "iotx_hal_internal.h"
+#include <errno.h>
 
 #define SEND_TIMEOUT_SECONDS                (10)
 #define GUIDER_ONLINE_HOSTNAME              ("iot-auth.cn-shanghai.aliyuncs.com")
@@ -60,7 +65,7 @@ typedef struct {
 
 /* config authentication mode */
 #ifndef TLS_AUTH_MODE
-#define TLS_AUTH_MODE           TLS_AUTH_MODE_CA
+    #define TLS_AUTH_MODE           TLS_AUTH_MODE_CA
 #endif
 
 #define TLS_SAVE_TICKET
@@ -70,7 +75,8 @@ typedef struct {
 
 #define KEY_MAX_LEN          64
 #define TLS_MAX_SESSION_BUF 384
-#define KV_SESSION_KEY_FMT  "TLS_%s:%s"
+#define KV_SESSION_KEY_PREFIX "TLS_"
+#define KV_SESSION_KEY_FMT  "%s%s:%s"
 
 extern int HAL_Kv_Set(const char *key, const void *val, int len, int sync);
 
@@ -145,6 +151,19 @@ static int ssl_deserialize_session(mbedtls_ssl_session *session,
 }
 #endif /* #if defined(TLS_SAVE_TICKET) */
 
+int HAL_SSL_Del_KV_Session_Ticket(void)
+{
+    int ret = 0;
+
+#if defined(TLS_SAVE_TICKET)
+    #if BUILD_AOS
+    ret = HAL_Kv_Del_By_Prefix(KV_SESSION_KEY_PREFIX);
+    platform_info("del KV ticket:%d", ret);
+    #endif
+#endif
+
+    return ret;
+}
 
 static unsigned int _avRandom()
 {
@@ -235,9 +254,7 @@ static int _ssl_client_init(mbedtls_ssl_context *ssl,
                             mbedtls_pk_context *pk_cli, const char *cli_key, size_t key_len,  const char *cli_pwd, size_t pwd_len
                            )
 {
-#if (TLS_AUTH_MODE == TLS_AUTH_MODE_CA)
     int ret = -1;
-#endif
 
     /*
      * 0. Initialize the RNG and the session data
@@ -328,13 +345,106 @@ static int net_prepare(void)
     return (0);
 }
 
+void utils_str2uint(char *input, uint8_t input_len, uint32_t *output)
+{
+    uint8_t index = 0;
+    uint32_t temp = 0;
+
+    for (index = 0; index < input_len; index++) {
+        if (input[index] < '0' || input[index] > '9') {
+            return;
+        }
+        temp = temp * 10 + input[index] - '0';
+    }
+    *output = temp;
+}
+
+static int mbedtls_net_connect_timeout_backup(mbedtls_net_context *ctx, const char *host,
+        const char *port, int proto, unsigned int timeout)
+{
+    int ret;
+    struct sockaddr_in address;
+    size_t addr_len;
+    struct timeval sendtimeout;
+    uint8_t dns_retry = 0, dns_count = 0;
+    uint32_t uint_port = 0;
+    char *ip[DNS_RESULT_COUNT] = {0};
+
+    memset(&address, 0, sizeof(struct sockaddr_in));
+    utils_str2uint((char *)port, strlen(port), &uint_port);
+
+    if ((ret = net_prepare()) != 0) {
+        return (ret);
+    }
+
+    while (dns_retry++ < 8) {
+        ret = dns_getaddrinfo((char *)host, ip);
+        if (ret != 0) {
+            if (ret == EAI_AGAIN) {
+                int rc = res_init();
+                hal_info("getaddrinfo res_init, rc is %d, errno is %d\n", rc, errno);
+            }
+            hal_info("getaddrinfo error[%d], res: %s, host: %s, port: %s\n", dns_retry, gai_strerror(ret), host, port);
+            sleep(1);
+            continue;
+        } else {
+            break;
+        }
+    }
+
+    if (ret != 0) {
+        return (MBEDTLS_ERR_NET_UNKNOWN_HOST);
+    }
+
+    /* Try the sockaddrs until a connection succeeds */
+    ret = MBEDTLS_ERR_NET_UNKNOWN_HOST;
+    for (dns_count = 0; dns_count < DNS_RESULT_COUNT; dns_count++) {
+        if (ip[dns_count] == NULL || strlen(ip[dns_count]) == 0) {
+            continue;
+        }
+        hal_info("ip address: %s\n", ip[dns_count]);
+
+        ctx->fd = (int) socket(AF_INET, SOCK_STREAM, 0);
+        if (ctx->fd < 0) {
+            ret = MBEDTLS_ERR_NET_SOCKET_FAILED;
+            continue;
+        }
+
+        sendtimeout.tv_sec = timeout;
+        sendtimeout.tv_usec = 0;
+
+        if (0 != setsockopt(ctx->fd, SOL_SOCKET, SO_SNDTIMEO, &sendtimeout, sizeof(sendtimeout))) {
+            perror("setsockopt");
+            hal_err("setsockopt error");
+        }
+        hal_info("setsockopt SO_SNDTIMEO timeout: %ds", sendtimeout.tv_sec);
+
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = inet_addr(ip[dns_count]);
+        address.sin_port = htons(uint_port);
+
+        addr_len = sizeof(address);
+
+        if (connect(ctx->fd, (struct sockaddr *)&address, addr_len) == 0) {
+            ret = 0;
+            break;
+        }
+
+        close(ctx->fd);
+        ctx->fd = -1;
+        ret = MBEDTLS_ERR_NET_CONNECT_FAILED;
+    }
+
+    return (ret);
+}
 
 static int mbedtls_net_connect_timeout(mbedtls_net_context *ctx, const char *host,
                                        const char *port, int proto, unsigned int timeout)
 {
     int ret;
-    struct addrinfo hints, *addr_list, *cur;
+    struct addrinfo hints, *addr_list = NULL, *cur;
     struct timeval sendtimeout;
+    uint8_t dns_retry = 0;
 
     if ((ret = net_prepare()) != 0) {
         return (ret);
@@ -346,7 +456,35 @@ static int mbedtls_net_connect_timeout(mbedtls_net_context *ctx, const char *hos
     hints.ai_socktype = proto == MBEDTLS_NET_PROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
     hints.ai_protocol = proto == MBEDTLS_NET_PROTO_UDP ? IPPROTO_UDP : IPPROTO_TCP;
 
-    if (getaddrinfo(host, port, &hints, &addr_list) != 0) {
+    while (dns_retry++ < 8) {
+        #ifdef DEV_OFFLINE_LOG_ENABLE
+        diagnosis_offline_log(LOG_LEVEL_I, "get ip start\r\n");
+        #endif
+        ret = getaddrinfo(host, port, &hints, &addr_list);
+        #ifdef DEV_OFFLINE_LOG_ENABLE
+        diagnosis_offline_log(LOG_LEVEL_I, "get ip %s\r\n", (ret != 0)?"fail":"success");
+        #endif
+        if (ret != 0) {
+
+#if defined(_PLATFORM_IS_LINUX_)
+            if (ret == EAI_AGAIN) {
+                int rc = res_init();
+                hal_info("getaddrinfo res_init, rc is %d, errno is %d\n", rc, errno);
+            }
+#endif
+            hal_info("getaddrinfo error[%d], res: %s, host: %s, port: %s\n", dns_retry, gai_strerror(ret), host, port);
+            if (addr_list) {
+                freeaddrinfo(addr_list);
+                addr_list = NULL;
+            }
+            sleep(1);
+            continue;
+        } else {
+            break;
+        }
+    }
+
+    if (ret != 0) {
         return (MBEDTLS_ERR_NET_UNKNOWN_HOST);
     }
 
@@ -380,6 +518,7 @@ static int mbedtls_net_connect_timeout(mbedtls_net_context *ctx, const char *hos
         }
 
         close(ctx->fd);
+        ctx->fd = -1;
         ret = MBEDTLS_ERR_NET_CONNECT_FAILED;
     }
 
@@ -387,6 +526,7 @@ static int mbedtls_net_connect_timeout(mbedtls_net_context *ctx, const char *hos
 
     return (ret);
 }
+
 #endif
 
 void *_SSLCalloc_wrapper(size_t n, size_t size)
@@ -464,6 +604,9 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
                               const char *client_pwd, size_t client_pwd_len)
 {
     int ret = -1;
+#if defined(_PLATFORM_IS_LINUX_)
+    struct in_addr in;
+#endif /* #if defined(_PLATFORM_IS_LINUX_) */
     /*
      * 0. Init
      */
@@ -480,11 +623,16 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
      */
     hal_info("Connecting to /%s/%s...", addr, port);
 #if defined(_PLATFORM_IS_LINUX_)
-    if (0 != (ret = mbedtls_net_connect_timeout(&(pTlsData->fd), addr, port, MBEDTLS_NET_PROTO_TCP,
+    if (0 != (ret = mbedtls_net_connect_timeout_backup(&(pTlsData->fd), addr, port, MBEDTLS_NET_PROTO_TCP,
                     SEND_TIMEOUT_SECONDS))) {
-        hal_err(" failed ! net_connect returned -0x%04x", -ret);
-        return ret;
+        hal_err(" backup failed ! net_connect returned -0x%04x", -ret);
+        if (0 != (ret = mbedtls_net_connect_timeout(&(pTlsData->fd), addr, port, MBEDTLS_NET_PROTO_TCP,
+                        SEND_TIMEOUT_SECONDS))) {
+            hal_err(" failed ! net_connect returned -0x%04x", -ret);
+            return ret;
+        }
     }
+
 #else
     if (0 != (ret = mbedtls_net_connect(&(pTlsData->fd), addr, port, MBEDTLS_NET_PROTO_TCP))) {
         hal_err(" failed ! net_connect returned -0x%04x", -ret);
@@ -584,12 +732,8 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
                 sign_string[i] -= 'a' - 'A';
             }
         }
-		
-        printf("psk_identity: %s\n",psk_identity);
-
-	/*
-	printf("psk         : %s\n",sign_string);
-	*/
+        /* printf("psk_identity: %s\n",psk_identity);
+        printf("psk         : %s\n",sign_string); */
 
         mbedtls_ssl_conf_psk(&(pTlsData->conf), (const unsigned char *)sign_string, strlen(sign_string),
                              (uint8_t *)psk_identity, strlen(psk_identity));
@@ -609,21 +753,29 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
         hal_err("failed! mbedtls_ssl_setup returned %d", ret);
         return ret;
     }
-#if defined(ON_PRE) || defined(ON_DAILY)
+#if (defined(ON_PRE) || defined(ON_DAILY))
     hal_err("SKIPPING mbedtls_ssl_set_hostname() when ON_PRE or ON_DAILY defined!");
 #else
-    mbedtls_ssl_set_hostname(&(pTlsData->ssl), addr);
+#if defined(_PLATFORM_IS_LINUX_)
+    /* only set hostname when addr isn't ip string and hostname isn't preauth_shanghai */
+    if (inet_aton(addr, &in) == 0 && strcmp("iot-auth-pre.cn-shanghai.aliyuncs.com", addr)) {
+        mbedtls_ssl_set_hostname(&(pTlsData->ssl), addr);
+    }
+#else
+    if (strcmp("iot-auth-pre.cn-shanghai.aliyuncs.com", addr)) {
+        mbedtls_ssl_set_hostname(&(pTlsData->ssl), addr);
+    }
+#endif /* #if defined(_PLATFORM_IS_LINUX_) */
 #endif
     mbedtls_ssl_set_bio(&(pTlsData->ssl), &(pTlsData->fd), mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
 
-/* setup sessoin if sessoin ticket enabled */
+    /* setup sessoin if sessoin ticket enabled */
 #if defined(TLS_SAVE_TICKET)
     if (NULL == saved_session) {
         do {
             int len = TLS_MAX_SESSION_BUF;
+            char key_buf[KEY_MAX_LEN] = {0};
             unsigned char *save_buf = HAL_Malloc(TLS_MAX_SESSION_BUF);
-	        char key_buf[KEY_MAX_LEN] = {0};
-
             if (save_buf ==  NULL) {
                 printf(" malloc failed\r\n");
                 break;
@@ -640,11 +792,12 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
 
             memset(save_buf, 0x00, TLS_MAX_SESSION_BUF);
             memset(saved_session, 0x00, sizeof(mbedtls_ssl_session));
-	        HAL_Snprintf(key_buf,KEY_MAX_LEN -1, KV_SESSION_KEY_FMT, addr, port);
+
+	        HAL_Snprintf(key_buf,KEY_MAX_LEN -1, KV_SESSION_KEY_FMT, KV_SESSION_KEY_PREFIX, addr, port);
             ret = HAL_Kv_Get(key_buf, save_buf, &len);
 
             if (ret != 0 || len == 0) {
-                printf(" kv get failed len=%d,ret = %d\r\n", len, ret);
+                printf("get kv ticket ret=%d", ret);
                 HAL_Free(saved_session);
                 HAL_Free(save_buf);
                 save_buf = NULL;
@@ -673,6 +826,7 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
     /*
       * 4. Handshake
       */
+    mbedtls_ssl_conf_read_timeout(&(pTlsData->conf), 10000);
     hal_info("Performing the SSL/TLS handshake...");
 
     while ((ret = mbedtls_ssl_handshake(&(pTlsData->ssl))) != 0) {
@@ -715,7 +869,7 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
         } else {
             ret = memcmp(new_session->ticket, saved_session->ticket, new_session->ticket_len);
         }
-        if (ret != 0) {
+        if ((ret != 0) && (new_session->ticket_len > 0)) {
             unsigned char *save_buf = HAL_Malloc(TLS_MAX_SESSION_BUF);
             if (save_buf ==  NULL) {
                 mbedtls_ssl_session_free(new_session);
@@ -727,10 +881,9 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
             ret = ssl_serialize_session(new_session, save_buf, TLS_MAX_SESSION_BUF, &real_session_len);
             printf("mbedtls_ssl_get_session_session return 0x%04x real_len=%d\r\n", ret, (int)real_session_len);
             if (ret == 0) {
-		        char key_buf[KEY_MAX_LEN] = {0};
-		        HAL_Snprintf(key_buf,KEY_MAX_LEN -1, KV_SESSION_KEY_FMT, addr, port);
+                char key_buf[KEY_MAX_LEN] = {0};
+		        HAL_Snprintf(key_buf,KEY_MAX_LEN -1, KV_SESSION_KEY_FMT, KV_SESSION_KEY_PREFIX, addr, port);
                 ret = HAL_Kv_Set(key_buf, (void *)save_buf, real_session_len, 1);
-
                 if (ret < 0) {
                     printf("save ticket to kv failed ret =%d ,len = %d\r\n", ret, (int)real_session_len);
                 }
@@ -806,8 +959,60 @@ static int _network_ssl_read(TLSDataParams_t *pTlsData, char *buffer, int len, i
 
 static int _network_ssl_write(TLSDataParams_t *pTlsData, const char *buffer, int len, int timeout_ms)
 {
+#if defined(_PLATFORM_IS_LINUX_)
+    int32_t res = 0;
+    int32_t write_bytes = 0;
+    uint64_t timestart_ms = 0, timenow_ms = 0;
+    struct timeval timestart, timenow, timeout;
+
+    if (pTlsData == NULL) {
+        return -1;
+    }
+
+    /* timeout */
+    timeout.tv_sec = timeout_ms / 1000;
+    timeout.tv_usec = (timeout_ms % 1000) * 1000;
+
+    /* Start Time */
+    gettimeofday(&timestart, NULL);
+    timestart_ms = timestart.tv_sec * 1000 + timestart.tv_usec / 1000;
+    timenow_ms = timestart_ms;
+
+    res = setsockopt(pTlsData->fd.fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    if (res < 0) {
+        return -1;
+    }
+
+    do {
+        gettimeofday(&timenow, NULL);
+        timenow_ms = timenow.tv_sec * 1000 + timenow.tv_usec / 1000;
+
+        if (timenow_ms - timestart_ms >= timenow_ms ||
+            timeout_ms - (timenow_ms - timestart_ms) > timeout_ms) {
+            break;
+        }
+
+        res = mbedtls_ssl_write(&(pTlsData->ssl), (unsigned char *)buffer + write_bytes, len - write_bytes);
+        if (res < 0) {
+            if (res != MBEDTLS_ERR_SSL_WANT_READ &&
+                res != MBEDTLS_ERR_SSL_WANT_WRITE) {
+                break;
+            }
+        } else if (res == 0) {
+            break;
+        } else {
+            write_bytes += res;
+        }
+    } while (((timenow_ms - timestart_ms) < timeout_ms) && (write_bytes < len));
+
+    return write_bytes;
+#else
     uint32_t writtenLen = 0;
     int ret = -1;
+
+    if (pTlsData == NULL) {
+        return -1;
+    }
 
     while (writtenLen < len) {
         ret = mbedtls_ssl_write(&(pTlsData->ssl), (unsigned char *)(buffer + writtenLen), (len - writtenLen));
@@ -826,6 +1031,7 @@ static int _network_ssl_write(TLSDataParams_t *pTlsData, const char *buffer, int
     }
 
     return writtenLen;
+#endif
 }
 
 static void _network_ssl_disconnect(TLSDataParams_t *pTlsData)

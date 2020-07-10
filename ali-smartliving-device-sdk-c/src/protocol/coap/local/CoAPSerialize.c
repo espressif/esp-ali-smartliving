@@ -96,11 +96,19 @@ unsigned short CoAPSerialize_Options(CoAPMessage *msg,  unsigned char * buf, uns
 {
     int i      = 0;
     unsigned short count  = 0;
-
+    unsigned short optdelta = 0;
+    unsigned short opt_num;
+    CoAPMsgOption  option;
+    
     for (i = 0; i < msg->optcount; i++)
     {
         unsigned short len = 0;
-        len = CoAPSerialize_Option(&msg->options[i], &buf[count]);
+        memcpy (&option, &msg->options[i], sizeof(CoAPMsgOption));
+        opt_num = option.num;
+        option.num = option.num - optdelta;
+        optdelta = opt_num;
+        
+        len = CoAPSerialize_Option(&option, &buf[count]);
         if (0 < len){
             count += len;
         }
@@ -143,11 +151,18 @@ unsigned short CoAPSerialize_OptionsLen(CoAPMessage *msg)
 {
     int i      = 0;
     unsigned short count  = 0;
-
-    for (i = 0; i < msg->optcount; i++)
-    {
+    unsigned short optdelta = 0;
+    unsigned short opt_num;
+    CoAPMsgOption  option;
+    
+    for (i = 0; i < msg->optcount; i++) {
         unsigned short len = 0;
-        len = CoAPSerialize_OptionLen(&msg->options[i]);
+        memcpy (&option, &msg->options[i], sizeof(CoAPMsgOption));
+        opt_num = option.num;
+        option.num = option.num - optdelta;
+        optdelta = opt_num;
+        
+        len = CoAPSerialize_OptionLen(&option);
         if (0 < len){
             count += len;
         }

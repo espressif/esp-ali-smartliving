@@ -208,6 +208,7 @@ struct ap_info *zconfig_get_apinfo_by_ssid_suffix(uint8_t *ssid_suffix)
  *     0/success, -1/invalid params(empty ssid/bssid)
  */
 
+extern char zconfig_is_utf8(const char *ansi_str, int length);
 int awss_save_apinfo(uint8_t *ssid, uint8_t *bssid, uint8_t channel, uint8_t auth,
                      uint8_t pairwise_cipher, uint8_t group_cipher, signed char rssi)
 {
@@ -315,12 +316,25 @@ int awss_save_apinfo(uint8_t *ssid, uint8_t *bssid, uint8_t channel, uint8_t aut
                i, ssid, bssid[0], bssid[1], bssid[2],
                bssid[3], bssid[4], bssid[5], channel,
                rssi > 0 ? rssi - 256 : rssi, adha);
-
         #ifdef DEV_OFFLINE_LOG_ENABLE
         signed char _rssi = rssi > 0 ? rssi - 256 : rssi;
-        
+
         if (i < 33 && _rssi > -70)
-        diagnosis_offline_log(LOG_LEVEL_I, "AP(%d) ssid:%s rssi:%d ch:%d\n", i, ssid, _rssi, channel);
+        {
+            if (ssid && (strlen((const char*)ssid) > 0))
+            {
+                diagnosis_offline_log(LOG_LEVEL_I, "ssid:%s rssi:%d ch:%d\r\n", ssid, _rssi, channel);
+            }
+            else
+            {
+                awss_trace("ssid is invalid");
+            }
+
+            if (0 == zconfig_is_utf8((const char *)ssid, strlen((const char*)ssid)))
+            {
+                awss_trace("ssid:%s is not utf8", ssid);
+            }
+        }
         #endif
     } while (0);
     /*

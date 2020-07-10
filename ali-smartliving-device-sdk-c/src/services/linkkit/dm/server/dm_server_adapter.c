@@ -2,6 +2,7 @@
 #include "iotx_dm_internal.h"
 
 #include "CoAPServer.h"
+#include "dm_msg_process.h"
 
 #define ALCS_NOTIFY_PORT     (5683)
 #define ALCS_NOTIFY_HOST     "255.255.255.255"
@@ -116,7 +117,10 @@ int dm_server_send(char *uri, unsigned char *payload, int payload_len, void *con
     alcs_msg.port = alcs_context ? alcs_context->port : 0;
     alcs_msg.msg_code = (alcs_context && alcs_context->token_len
                          && alcs_context->token) ? ITOX_ALCS_COAP_MSG_CODE_205_CONTENT : ITOX_ALCS_COAP_MSG_CODE_GET;
-    alcs_msg.msg_type = IOTX_ALCS_MESSAGE_TYPE_CON;
+    if (strstr(uri, DM_URI_DEV_CORE_SERVICE_DEV) == NULL)
+        alcs_msg.msg_type = IOTX_ALCS_MESSAGE_TYPE_CON;
+    else
+        alcs_msg.msg_type = IOTX_ALCS_MESSAGE_TYPE_NON;
     alcs_msg.uri = uri;
     alcs_msg.payload = payload;
     alcs_msg.payload_len = payload_len;
@@ -157,13 +161,20 @@ int dm_server_subscribe(char *uri, CoAPRecvMsgHandler callback, int auth_type)
 
     return res;
 }
-
+#ifdef DEVICE_MODEL_GATEWAY 
+int dm_server_unsubscribe(const char *uri)
+{
+    dm_server_ctx_t *ctx = dm_server_get_ctx();
+    iotx_alcs_unregister_resource(ctx->conn_handle, uri);
+    return 0;
+}
+#endif
 int dm_server_add_device(char product_key[PRODUCT_KEY_MAXLEN], char device_name[DEVICE_NAME_MAXLEN])
 {
     int res = 0;
+#ifdef DEVICE_MODEL_GATEWAY 
     dm_server_ctx_t *ctx = dm_server_get_ctx();
 
-#ifdef DEVICE_MODEL_GATEWAY 
     res = iotx_alcs_add_sub_device(ctx->conn_handle, (const char *)product_key, (const char *)device_name);
     dm_log_info("Add Device Result: %d, Product Key: %s, Device Name: %s", res, product_key, device_name);
 #endif
@@ -173,9 +184,9 @@ int dm_server_add_device(char product_key[PRODUCT_KEY_MAXLEN], char device_name[
 int dm_server_del_device(char product_key[PRODUCT_KEY_MAXLEN], char device_name[DEVICE_NAME_MAXLEN])
 {
     int res = 0;
+#ifdef DEVICE_MODEL_GATEWAY 
     dm_server_ctx_t *ctx = dm_server_get_ctx();
 
-#ifdef DEVICE_MODEL_GATEWAY 
     res = iotx_alcs_remove_sub_device(ctx->conn_handle, (const char *)product_key, (const char *)device_name);
     dm_log_info("Del Device Result: %d, Product Key: %s, Device Name: %s", res, product_key, device_name);
 #endif

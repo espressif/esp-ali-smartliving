@@ -1,4 +1,4 @@
-set(lib_path ${CMAKE_CURRENT_SOURCE_DIR}/ali-smartliving-device-sdk-c/output/release/lib)
+set(lib_path ${CMAKE_CURRENT_SOURCE_DIR}/ali-smartliving-device-sdk-c/output/release/lib ${CMAKE_CURRENT_SOURCE_DIR}/ali-smartliving-device-sdk-c/lib/xtensa)
 
 set(COMPONENT_PRIV_INCLUDEDIRS
     ali-smartliving-device-sdk-c/output/release/include/imports)
@@ -20,4 +20,4 @@ register_component()
 component_compile_options(-DAUTH_MODE_CERT)
 
 target_link_libraries(${COMPONENT_TARGET} "-L ${lib_path}")
-target_link_libraries(${COMPONENT_TARGET} iot_sdk)
+target_link_libraries(${COMPONENT_TARGET} iot_sdk awss_security)

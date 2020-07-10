@@ -190,8 +190,8 @@ static void iotx_cloud_conn_mqtt_event_handle(void *pcontext, void *pclient, iot
                 CM_ERR("topic malloc failed");
                 return;
             }
-            memset(topic, 0, topic_info->topic_len + 1);
-            memcpy(topic, topic_info->ptopic, topic_info->topic_len);
+            memset(topic,0,topic_info->topic_len + 1);
+            memcpy(topic,topic_info->ptopic,topic_info->topic_len);
 
             topic_handle_func(_mqtt_conncection->fd, topic, topic_info->payload, topic_info->payload_len, NULL);
 
@@ -209,14 +209,15 @@ static void iotx_cloud_conn_mqtt_event_handle(void *pcontext, void *pclient, iot
     }
 }
 
-
 static int  _mqtt_connect(uint32_t timeout)
 {
+#define BASE_INTERVAL_TIME_MS (1000)
     void *pclient;
     iotx_time_t timer;
     iotx_mqtt_param_t *mqtt_param = NULL;
     iotx_conn_info_pt pconn_info = NULL;
-
+    uint32_t interval_ms = BASE_INTERVAL_TIME_MS;
+    uint32_t sleep_ms = 0;
     char product_key[PRODUCT_KEY_LEN + 1] = {0};
     char device_name[DEVICE_NAME_LEN + 1] = {0};
     char device_secret[DEVICE_SECRET_LEN + 1] = {0};
@@ -226,6 +227,8 @@ static int  _mqtt_connect(uint32_t timeout)
 
     mqtt_param = _mqtt_conncection->open_params;
     POINTER_SANITY_CHECK(mqtt_param, NULL_VALUE_ERROR);
+
+    iotx_guider_get_kv_env();
 
     HAL_GetProductKey(product_key);
     HAL_GetDeviceName(device_name);
@@ -240,33 +243,39 @@ static int  _mqtt_connect(uint32_t timeout)
     utils_time_countdown_ms(&timer, timeout);
 
     do {
-        if (0 == IOT_SetupConnInfo(product_key, device_name, device_secret, (void **)&pconn_info)) {
+        int rc = IOT_SetupConnInfo(product_key, device_name, device_secret, (void **)&pconn_info);
+        if (rc ==  0) {
             mqtt_param->port = pconn_info->port;
             mqtt_param->host = pconn_info->host_name;
             mqtt_param->client_id = pconn_info->client_id;
             mqtt_param->username = pconn_info->username;
             mqtt_param->password = pconn_info->password;
             mqtt_param->pub_key = pconn_info->pub_key;
-            break;
-        }
-        CM_ERR("IOT_SetupConnInfo failed");
-        HAL_SleepMs(500);
-    } while (!utils_time_is_expired(&timer));
 
-    do {
-        pclient = IOT_MQTT_Construct((iotx_mqtt_param_t *)_mqtt_conncection->open_params);
-        if (pclient != NULL) {
-            _mqtt_conncection->context = pclient;
-            iotx_cm_event_msg_t event;
-            event.type = IOTX_CM_EVENT_CLOUD_CONNECTED;
-            event.msg = NULL;
+#ifdef DEV_OFFLINE_LOG_ENABLE
+            diagnosis_offline_log(LOG_LEVEL_I, "Connect:%s:%d\r\n", mqtt_param->host, mqtt_param->port);
+#endif
+            pclient = IOT_MQTT_Construct((iotx_mqtt_param_t *)_mqtt_conncection->open_params);
+#ifdef DEV_OFFLINE_LOG_ENABLE
+            diagnosis_offline_log(LOG_LEVEL_I, "Connect %s\r\n", (pclient != NULL)?"success":"fail");
+#endif
+            if (pclient != NULL) {
+                _mqtt_conncection->context = pclient;
+                iotx_cm_event_msg_t event;
+                event.type = IOTX_CM_EVENT_CLOUD_CONNECTED;
+                event.msg = NULL;
 
-            if (_mqtt_conncection->event_handler) {
-                _mqtt_conncection->event_handler(_mqtt_conncection->fd, &event, (void *)_mqtt_conncection);
+                if (_mqtt_conncection->event_handler) {
+                    _mqtt_conncection->event_handler(_mqtt_conncection->fd, &event, (void *)_mqtt_conncection);
+                }
+
+                return 0;
             }
-            return 0;
         }
-        HAL_SleepMs(500);
+        HAL_Srandom((uint32_t)HAL_UptimeMs());
+        sleep_ms = interval_ms + HAL_Random(BASE_INTERVAL_TIME_MS);
+        HAL_SleepMs(sleep_ms);
+        interval_ms *= 2;
     } while (!utils_time_is_expired(&timer));
 
     iotx_cm_event_msg_t event;
@@ -277,6 +286,7 @@ static int  _mqtt_connect(uint32_t timeout)
         _mqtt_conncection->event_handler(_mqtt_conncection->fd, &event, (void *)_mqtt_conncection);
     }
     CM_ERR("mqtt connect failed");
+
     return -1;
 }
 

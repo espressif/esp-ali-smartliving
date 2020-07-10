@@ -24,7 +24,6 @@ typedef struct iotx_update_ack_wait_list_st {
     iotx_time_t         timer;
 } iotx_update_ack_wait_list_t, *iotx_update_ack_wait_list_pt;
 
-
 typedef struct iotx_inner_data_st {
     uint32_t token_num;
     uint32_t version;
@@ -34,6 +33,7 @@ typedef struct iotx_inner_data_st {
     char *ptopic_update;
     char *ptopic_get;
     int32_t sync_status;
+    shadow_downstream_method_type method_type;
 } iotx_inner_data_t, *iotx_inner_data_pt;;
 
 
@@ -56,9 +56,9 @@ iotx_err_t iotx_ds_common_format_add(iotx_shadow_pt pshadow,
                                      const void *pvalue,
                                      iotx_shadow_attr_datatype_t datatype);
 
-iotx_err_t iotx_ds_common_format_finalize(iotx_shadow_pt pshadow, format_data_pt pformat, const char *tail_str);
+iotx_err_t iotx_ds_common_format_finalize(iotx_shadow_pt pshadow, format_data_pt pformat, const char *tail_str, int noversion);
 
-void iotx_ds_common_update_time(iotx_shadow_pt pshadow, uint32_t new_timestamp);
+int iotx_ds_common_update_time(iotx_shadow_pt pshadow, uint32_t new_timestamp);
 
 int iotx_ds_common_convert_data2string(
             char *buf,
@@ -86,7 +86,7 @@ char *iotx_ds_common_generate_topic_name(iotx_shadow_pt pshadow, const char *top
 
 int iotx_ds_common_publish2update(iotx_shadow_pt pshadow, char *data, uint32_t data_len);
 
-void iotx_ds_common_update_version(iotx_shadow_pt pshadow, uint32_t version);
+int iotx_ds_common_update_version(iotx_shadow_pt pshadow, uint32_t version);
 
 uint32_t iotx_ds_common_get_version(iotx_shadow_pt pshadow);
 

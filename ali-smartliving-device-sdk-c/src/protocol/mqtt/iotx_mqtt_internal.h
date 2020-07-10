@@ -30,7 +30,8 @@
 
 #define MQTT_DYNBUF_RECV_MARGIN                      (8)
 
-#define MQTT_CONNECT_REQUIRED_BUFLEN                 (256)
+/* Enlarge this buffer size due to add token params etc */
+#define MQTT_CONNECT_REQUIRED_BUFLEN                 (384)
 
 /* MQTT send publish packet */
 

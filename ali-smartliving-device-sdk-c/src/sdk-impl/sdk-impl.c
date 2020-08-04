@@ -8,7 +8,7 @@
     #include "iotx_dm.h"
 #endif
 
-#define KV_KEY_DEVICE_SECRET            "DyncRegDeviceSecret"
+#define KV_KEY_DEVICE_SECRET            "DRDevSecret"
 
 static sdk_impl_ctx_t g_sdk_impl_ctx = {0};
 

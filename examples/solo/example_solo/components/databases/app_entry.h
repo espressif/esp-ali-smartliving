@@ -29,6 +29,12 @@
 extern "C" {
 #endif
 
+#ifdef CONFIG_IDF_TARGET_ESP8266
+#define CONN_MGR_TASK_SIZE 3 * 1024
+#else
+#define CONN_MGR_TASK_SIZE 6 * 1024
+#endif
+
 void app_get_input_param(char *param, size_t param_len);
 int app_check_config_pk(void);
 void start_conn_mgr(void);;

@@ -11,6 +11,7 @@ LIBOBJ_TMPDIR   := $(OUTPUT_DIR)/lib$(TOPDIR_NAME).objs
 SYSROOT_BIN     := $(OUTPUT_DIR)${bindir}
 SYSROOT_INC     := $(OUTPUT_DIR)${incdir}
 SYSROOT_LIB     := $(OUTPUT_DIR)${libdir}
+
 CONFIG_VENDOR   := $(shell grep -m 1 "VENDOR *:" $(CONFIG_TPL) 2>/dev/null|awk '{ print $$NF }')
 IMPORT_VDRDIR   := $(IMPORT_DIR)/$(CONFIG_VENDOR)
 

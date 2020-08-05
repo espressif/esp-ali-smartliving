@@ -408,6 +408,7 @@ DLL_HAL_API void    HAL_Reboot(void);
 DLL_HAL_API int     HAL_Kv_Set(const char *key, const void *val, int len, int sync);
 DLL_HAL_API int     HAL_Kv_Get(const char *key, void *buffer, int *buffer_len);
 DLL_HAL_API int     HAL_Kv_Del(const char *key);
+DLL_HAL_API int     HAL_Kv_Del_By_Prefix(const char *prefix);
 
 DLL_HAL_API void   *HAL_Timer_Create(const char *name, void (*func)(void *), void *user_data);
 DLL_HAL_API int     HAL_Timer_Start(void *t, int ms);

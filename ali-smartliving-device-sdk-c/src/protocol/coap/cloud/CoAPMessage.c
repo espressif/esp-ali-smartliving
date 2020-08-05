@@ -280,7 +280,7 @@ int Cloud_CoAPMessage_send(Cloud_CoAPContext *context, Cloud_CoAPMessage *messag
     /* TODO: get the message length */
     msglen = Cloud_CoAPSerialize_MessageLength(message);
     if (COAP_MSG_MAX_PDU_LEN < msglen) {
-        COAP_INFO("The message length %d is too loog", msglen);
+        COAP_INFO("The message length %d is too long", msglen);
         return COAP_ERROR_DATA_SIZE;
     }
 

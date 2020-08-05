@@ -402,7 +402,6 @@ int HAL_Firmware_Persistence_Stop(void)
     }
 #endif
 
-    /* check file md5, and burning it to flash ... finally reboot system */
     return 0;
 }
 
@@ -527,11 +526,6 @@ int HAL_Wifi_Get_Ap_Info(
 }
 
 int HAL_Awss_Get_Conn_Encrypt_Type(void)
-{
-    return 0;
-}
-
-int HAL_Wifi_Get_Link_Stat(_OU_ int *p_rssi, _OU_ int *p_channel)
 {
     return 0;
 }

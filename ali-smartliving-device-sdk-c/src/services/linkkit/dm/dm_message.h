@@ -22,6 +22,7 @@
 #define DM_MSG_KEY_PRODUCT_KEY          "productKey"
 #define DM_MSG_KEY_DEVICE_NAME          "deviceName"
 #define DM_MSG_KEY_DEVICE_SECRET        "deviceSecret"
+#define DM_MSG_KEY_SYNC_RESULT          "syncResult"
 #define DM_MSG_KEY_TIME                 "time"
 
 #define DM_MSG_SIGN_METHOD_SHA256       "Sha256"
@@ -101,20 +102,17 @@ int dm_msg_thing_model_down_raw(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ 
                                 _IN_ char *payload, _IN_ int payload_len);
 #ifdef LINK_VISUAL_ENABLE
 int dm_msg_thing_model_link_visual(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char device_name[DEVICE_NAME_MAXLEN],
-                                _IN_ char *payload, _IN_ int payload_len);
+                                   _IN_ char *service_id, _IN_ int service_id_len, _IN_ char *payload, _IN_ int payload_len);
 #endif
 int dm_msg_thing_model_up_raw_reply(_IN_ char product_key[PRODUCT_KEY_MAXLEN],
                                     _IN_ char device_name[DEVICE_NAME_MAXLEN], char *payload, int payload_len);
 #if !defined(DEVICE_MODEL_RAWDATA_SOLO)
 int dm_msg_property_set(int devid, dm_msg_request_payload_t *request);
-int dm_msg_thing_event_notify(int devid, dm_msg_request_payload_t *request);
 
 int dm_msg_property_get(_IN_ int devid, _IN_ dm_msg_request_payload_t *request, _IN_ void *ctx);
 
 int dm_msg_thing_service_request(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char device_name[DEVICE_NAME_MAXLEN],
                                  char *identifier, int identifier_len, dm_msg_request_payload_t *request, _IN_ void *ctx);
-int dm_msg_rrpc_request(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char device_name[DEVICE_NAME_MAXLEN],
-                        char *messageid, int messageid_len, dm_msg_request_payload_t *request);
 int dm_msg_thing_event_property_post_reply(dm_msg_response_payload_t *response);
 int dm_msg_thing_event_post_reply(_IN_ char *identifier, _IN_ int identifier_len,
                                   _IN_ dm_msg_response_payload_t *response);
@@ -125,11 +123,15 @@ int dm_msg_unified_service_post_reply(_IN_ dm_msg_response_payload_t *response);
 
 int dm_msg_thing_deviceinfo_update_reply(dm_msg_response_payload_t *response);
 int dm_msg_thing_deviceinfo_delete_reply(dm_msg_response_payload_t *response);
-int dm_msg_thing_dynamictsl_get_reply(dm_msg_response_payload_t *response);
+#endif /*end of DEVICE_MODEL_RAWDATA_SOLO*/
+int dm_msg_thing_event_notify(int devid, dm_msg_request_payload_t *request);
+
+int dm_msg_rrpc_request(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char device_name[DEVICE_NAME_MAXLEN],
+                        char *messageid, int messageid_len, dm_msg_request_payload_t *request);
+
 int dm_msg_ntp_response(char *payload, int payload_len);
 int dm_msg_ext_error_response(char *payload, int payload_len);
 int dm_msg_thing_event_notify_reply(dm_msg_response_payload_t *response);
-#endif
 
 #ifdef DEVICE_MODEL_GATEWAY
     int dm_msg_topo_add_notify(_IN_ char *payload, _IN_ int payload_len);
@@ -141,6 +143,7 @@ int dm_msg_thing_event_notify_reply(dm_msg_response_payload_t *response);
     int dm_msg_thing_sub_unregister_reply(dm_msg_response_payload_t *response);
     int dm_msg_thing_topo_add_reply(dm_msg_response_payload_t *response);
     int dm_msg_thing_topo_delete_reply(dm_msg_response_payload_t *response);
+    int dm_msg_thing_topo_change(_IN_ char *payload, _IN_ int payload_len);
     int dm_msg_thing_subdev_reset_reply(dm_msg_response_payload_t *response);
     int dm_msg_topo_get_reply(dm_msg_response_payload_t *response);
     int dm_msg_thing_list_found_reply(dm_msg_response_payload_t *response);
@@ -172,7 +175,7 @@ int dm_msg_thing_topo_add(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char d
                           _IN_ char device_secret[DEVICE_SECRET_MAXLEN], _OU_ dm_msg_request_t *request);
 int dm_msg_thing_topo_delete(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char device_name[DEVICE_NAME_MAXLEN],
                              _OU_ dm_msg_request_t *request);
-int dm_msg_thing_subdev_reset(_OU_ dm_msg_request_t *request);          
+int dm_msg_thing_subdev_reset(_OU_ dm_msg_request_t *request);
 int dm_msg_thing_topo_get(_OU_ dm_msg_request_t *request);
 int dm_msg_thing_list_found(_IN_ char product_key[PRODUCT_KEY_MAXLEN], _IN_ char device_name[DEVICE_NAME_MAXLEN],
                             _OU_ dm_msg_request_t *request);

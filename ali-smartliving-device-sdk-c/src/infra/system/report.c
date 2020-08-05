@@ -18,6 +18,7 @@
 #else
     #define VERSION_DEBUG(...)
 #endif
+#define    VERSION_INFO(...)    log_info("version", __VA_ARGS__)
 #define    VERSION_ERR(...)    log_err("version", __VA_ARGS__)
 
 unsigned int g_report_id = 0;
@@ -92,8 +93,6 @@ void aos_get_version_hex(unsigned char version[VERSION_NUM_SIZE])
     version[3] = 0x00;
 }
 #endif
-
-
 
 // aos will implement this function
 #if defined(BUILD_AOS)
@@ -194,7 +193,7 @@ int iotx_report_devinfo(void *pclient)
     if (ret <= 0 || ret >= NIF_STRLEN_MAX) {
         VERSION_ERR("the network interface info set failed or not set, writen len is %d", ret);
         const char *default_network_info = "invalid network interface info";
-        strncpy(network_interfaces, default_network_info, strlen(default_network_info));
+        strncpy(network_interfaces, default_network_info, sizeof(network_interfaces));
     }
 
     msg_len = strlen(DEVICE_INFO_UPDATE_FMT) + 10 + strlen(LINKKIT_VERSION) + AOS_ACTIVE_INFO_LEN + \
@@ -223,7 +222,7 @@ int iotx_report_devinfo(void *pclient)
     VERSION_DEBUG("devinfo report data: %s", msg);
 
     if (info_report_func != NULL) {
-        info_report_func(pclient, topic_name, 1, msg, strlen(msg));
+        ret = info_report_func(pclient, topic_name, 1, msg, strlen(msg));
     }
 
     SYS_REPORT_FREE(msg);
@@ -312,7 +311,7 @@ int iotx_report_firmware_version(void *pclient)
 
     if (ret < 0) {
         VERSION_ERR("publish failed");
-        return FAIL_RETURN;
+        return ret;
     }
 
     VERSION_DEBUG("firmware version report finished, iotx_publish() = %d", ret);
@@ -399,7 +398,7 @@ int iotx_report_mid(void *pclient)
 
     VERSION_DEBUG("MID Report: finished, IOT_MQTT_Publish() = %d", ret);
 #else
-    VERSION_ERR("No report MID because which has been reported within client id");
+    VERSION_INFO("No report MID because which has been reported within client id");
 #endif
 
     return SUCCESS_RETURN;

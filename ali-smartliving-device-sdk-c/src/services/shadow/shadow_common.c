@@ -135,9 +135,10 @@ iotx_err_t iotx_ds_common_format_add(iotx_shadow_pt pshadow,
 }
 
 
-iotx_err_t iotx_ds_common_format_finalize(iotx_shadow_pt pshadow, format_data_pt pformat, const char *tail_str)
+iotx_err_t iotx_ds_common_format_finalize(iotx_shadow_pt pshadow, format_data_pt pformat, const char *tail_str, int noversion)
 {
 #define UPDATE_JSON_STR_END         ",\"clientToken\":\"%s-%d\",\"version\":%d}"
+#define UPDATE_JSON_STR_END_NO_VERSION        ",\"clientToken\":\"%s-%d\"}"
 
     int ret;
     char device_id[DEVICE_ID_LEN + 1] = {0};
@@ -151,13 +152,19 @@ iotx_err_t iotx_ds_common_format_finalize(iotx_shadow_pt pshadow, format_data_pt
     }
     HAL_GetDeviceID(device_id);
     size_free_space = pformat->buf_size - pformat->offset;
-    
-    ret = HAL_Snprintf(pformat->buf + pformat->offset,
+    if(noversion == 0){
+        ret = HAL_Snprintf(pformat->buf + pformat->offset,
                        size_free_space,
                        UPDATE_JSON_STR_END,
                        device_id,
                        iotx_ds_common_get_tokennum(pshadow),
-                       iotx_ds_common_get_version(pshadow));
+                       iotx_ds_common_get_version(pshadow) + 1);
+    }else{
+        ret = HAL_Snprintf(pformat->buf + pformat->offset,
+                       size_free_space,
+                       UPDATE_JSON_STR_END_NO_VERSION,
+                       device_id,
+                       iotx_ds_common_get_tokennum(pshadow));    }
 
     CHECK_SNPRINTF_RET(ret, size_free_space);
     pformat->offset += ret;
@@ -231,15 +238,25 @@ iotx_err_t iotx_ds_common_convert_string2data(
     return SUCCESS_RETURN;
 }
 
-
-void iotx_ds_common_update_time(iotx_shadow_pt pshadow, uint32_t new_timestamp)
+/* as the timestamp is second granularity, update maybe the same. */
+int iotx_ds_common_update_time(iotx_shadow_pt pshadow, uint32_t new_timestamp)
 {
+    int ret = 0;
+
     HAL_MutexLock(pshadow->mutex);
     pshadow->inner_data.time.base_system_time = utils_time_get_ms();
-    pshadow->inner_data.time.epoch_time = new_timestamp;
+    if(new_timestamp >= pshadow->inner_data.time.epoch_time){
+        pshadow->inner_data.time.epoch_time = new_timestamp;
+        ret = SUCCESS_RETURN;
+        shadow_info("update system time");
+    }else{
+        ret = FAIL_RETURN;
+        shadow_info("update system time failed.");
+    }
+
     HAL_MutexUnlock(pshadow->mutex);
 
-    shadow_info("update system time");
+    return ret;
 }
 
 
@@ -269,6 +286,7 @@ iotx_err_t iotx_ds_common_register_attr(
 
     HAL_MutexLock(pshadow->mutex);
     list_lpush(pshadow->inner_data.attr_list, node);
+    shadow_debug("register attr: %s", pattr->pattr_name);
     HAL_MutexUnlock(pshadow->mutex);
 
     return SUCCESS_RETURN;
@@ -297,17 +315,25 @@ iotx_err_t iotx_ds_common_remove_attr(
 }
 
 
-void iotx_ds_common_update_version(iotx_shadow_pt pshadow, uint32_t version)
+int iotx_ds_common_update_version(iotx_shadow_pt pshadow, uint32_t version)
 {
+    int ret = FAIL_RETURN;
+
     HAL_MutexLock(pshadow->mutex);
 
-    /* version number always grow up */
-    if (version > pshadow->inner_data.version) {
+    /* version number maybe overflow to zero and increase again in cloud.*/
+    if (pshadow->inner_data.version != version || version == 0) {
         pshadow->inner_data.version = version;
+        shadow_info("update shadow version");
+        ret = SUCCESS_RETURN;
+    }else{
+        shadow_info("update shadow version failed, same version ignored.");
+        ret = FAIL_RETURN;
     }
+
     HAL_MutexUnlock(pshadow->mutex);
 
-    shadow_info("update shadow version");
+    return ret;
 }
 
 
@@ -316,9 +342,10 @@ uint32_t iotx_ds_common_get_version(iotx_shadow_pt pshadow)
 {
     uint32_t ver;
     HAL_MutexLock(pshadow->mutex);
-    ++pshadow->inner_data.version;
+    //++pshadow->inner_data.version;
+    //ver = pshadow->inner_data.version + 1;
+    //++pshadow->inner_data.version;
     ver = pshadow->inner_data.version;
-    ++pshadow->inner_data.version;
     HAL_MutexUnlock(pshadow->mutex);
     return ver;
 }
@@ -348,7 +375,7 @@ char *iotx_ds_common_generate_topic_name(iotx_shadow_pt pshadow, const char *top
 
     len = SHADOW_TOPIC_LEN + sizeof(SHADOW_TOPIC_FMT);
 
-    topic_full = LITE_malloc(len + 1);
+    topic_full = SHADOW_malloc(len + 1);
     if (NULL == topic_full) {
         shadow_err("Not enough memory");
         return NULL;

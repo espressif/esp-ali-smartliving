@@ -21,8 +21,6 @@ void dm_client_thing_model_up_raw_reply(int fd, const char *topic, const char *p
 #if !defined(DEVICE_MODEL_RAWDATA_SOLO)
 void dm_client_thing_service_property_set(int fd, const char *topic, const char *payload, unsigned int payload_len,
         void *context);
-void dm_client_thing_event_notify(int fd, const char *topic, const char *payload, unsigned int payload_len,
-        void *context);
 void dm_client_thing_service_property_get(int fd, const char *topic, const char *payload, unsigned int payload_len,
         void *context);
 void dm_client_thing_service_property_post(int fd, const char *topic, const char *payload, unsigned int payload_len,
@@ -36,11 +34,21 @@ void dm_client_thing_deviceinfo_delete_reply(int fd, const char *topic, const ch
 void dm_client_thing_service_request(int fd, const char *topic, const char *payload, unsigned int payload_len,
                                      void *context);
 #ifdef LINK_VISUAL_ENABLE
-void dm_client_link_visual_p2p_request(int fd, const char *topic, const char *payload, unsigned int payload_len,
+void dm_client_link_visual_downstream(int fd, const char *topic, const char *payload, unsigned int payload_len,
                                      void *context);
 #endif
+#endif
+
+void dm_client_thing_event_notify(int fd, const char *topic, const char *payload, unsigned int payload_len,
+        void *context);
+
 void dm_client_thing_event_post_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
                                       void *context);
+
+void dm_client_rrpc_request_wildcard(int fd, const char *topic, const char *payload, unsigned int payload_len,
+                                     void *context);
+void dm_client_ntp_response(int fd, const char *topic, const char *payload, unsigned int payload_len, void *context);
+void dm_client_ext_error(int fd, const char *topic, const char *payload, unsigned int payload_len, void *context);
 
 #ifdef DM_UNIFIED_SERVICE_POST
 void dm_client_unified_service_post_reply(int fd, const char *topic, const char *payload, unsigned int payload_len, void *context);
@@ -48,13 +56,9 @@ void dm_client_unified_service_post_reply(int fd, const char *topic, const char 
 
 void dm_client_thing_event_notify_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
                                       void *context);
-void dm_client_rrpc_request_wildcard(int fd, const char *topic, const char *payload, unsigned int payload_len,
-                                     void *context);
-void dm_client_ntp_response(int fd, const char *topic, const char *payload, unsigned int payload_len, void *context);
-void dm_client_ext_error(int fd, const char *topic, const char *payload, unsigned int payload_len, void *context);
-#endif
 
 #ifdef DEVICE_MODEL_GATEWAY
+int dm_client_subdev_unsubscribe(char product_key[PRODUCT_KEY_MAXLEN], char device_name[DEVICE_NAME_MAXLEN]);
 void dm_client_thing_topo_add_notify(int fd, const char *topic, const char *payload, unsigned int payload_len,
                                      void *context);
 void dm_client_thing_disable(int fd, const char *topic, const char *payload, unsigned int payload_len, void *context);
@@ -73,6 +77,8 @@ void dm_client_thing_topo_delete_reply(int fd, const char *topic, const char *pa
 void dm_client_thing_sub_reset_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
                                        void *context);
 void dm_client_thing_topo_get_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
+                                    void *context);
+void dm_client_thing_topo_change(int fd, const char *topic, const char *payload, unsigned int payload_len,
                                     void *context);
 void dm_client_thing_list_found_reply(int fd, const char *topic, const char *payload, unsigned int payload_len,
                                       void *context);

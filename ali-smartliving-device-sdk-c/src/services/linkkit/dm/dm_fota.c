@@ -69,7 +69,6 @@ int dm_fota_perform_sync(_OU_ char *output, _IN_ int output_len)
     dm_fota_ctx_t *ctx = _dm_fota_get_ctx();
     void *ota_handle = NULL;
     uint32_t ota_type = IOT_OTAT_NONE;
-    uint8_t is_header = 1;
 
     if (output == NULL || output_len <= 0) {
         return DM_INVALID_PARAMETER;
@@ -102,19 +101,16 @@ int dm_fota_perform_sync(_OU_ char *output, _IN_ int output_len)
             ctx->is_report_new_config = 0;
             return FAIL_RETURN;
         }
-#ifdef SUPPORT_SECURITY_OTA
-        /* Check safe upgrade word in image */
-        if (is_header) {
-            if (HAL_Firmware_Check_Rsa_Key(output, file_download)) {
-                IOT_OTA_ReportProgress(ota_handle, IOT_OTAP_CHECK_FALIED, NULL);
-                HAL_Firmware_Persistence_Stop();
-                return SUCCESS_RETURN;
-            }
-            is_header = 0;
-        }
-#endif
+
         /* Write Config File Into Stroage */
-        HAL_Firmware_Persistence_Write(output, file_download);
+        res = HAL_Firmware_Persistence_Write(output, file_download);
+        if (res < 0) {
+            IOT_OTA_ReportProgress(ota_handle, IOT_OTAP_BURN_FAILED, NULL);
+            dm_log_err("Fota write firmware failed");
+            HAL_Firmware_Persistence_Stop();
+            ctx->is_report_new_config = 0;
+            return FAIL_RETURN;
+        }
 
         /* Get OTA information */
         IOT_OTA_Ioctl(ota_handle, IOT_OTAG_FETCHED_SIZE, &file_downloaded, 4);
@@ -138,9 +134,10 @@ int dm_fota_perform_sync(_OU_ char *output, _IN_ int output_len)
         /* Check If OTA Finished */
         if (IOT_OTA_IsFetchFinish(ota_handle)) {
             uint32_t file_isvalid = 0;
-            IOT_OTA_Ioctl(ota_handle, IOT_OTAG_CHECK_CONFIG, &file_isvalid, 4);
+            IOT_OTA_Ioctl(ota_handle, IOT_OTAG_CHECK_FIRMWARE, &file_isvalid, 4);
             if (file_isvalid == 0) {
                 HAL_Firmware_Persistence_Stop();
+                IOT_OTA_ReportProgress(ota_handle, IOT_OTAP_CHECK_FALIED, NULL);
                 ctx->is_report_new_config = 0;
                 return FAIL_RETURN;
             } else {

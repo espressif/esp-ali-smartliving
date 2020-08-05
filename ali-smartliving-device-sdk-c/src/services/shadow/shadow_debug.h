@@ -17,4 +17,6 @@
 #define shadow_info(...)     log_info("shadow", __VA_ARGS__)
 #define shadow_debug(...)    log_debug("shadow", __VA_ARGS__)
 
+#define SHADOW_malloc(size) LITE_malloc(size, MEM_MAGIC, "shadow")
+
 #endif  /* __SHAD_DEBUG_H__ */

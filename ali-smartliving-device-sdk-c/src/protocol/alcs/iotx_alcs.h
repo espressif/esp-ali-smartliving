@@ -248,8 +248,9 @@ int iotx_alcs_observe_notify(void *handle, const char *uri, uint32_t payload_len
  * @return status.
  * @see None.
  */
-int iotx_alcs_unregister_resource(void *handle, char *uri);
-
+#ifdef DEVICE_MODEL_GATEWAY
+int iotx_alcs_unregister_resource(void* handle, const char *uri);
+#endif
 /**
  * @brief Add sub device
  *

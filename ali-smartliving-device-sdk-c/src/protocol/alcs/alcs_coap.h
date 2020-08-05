@@ -56,7 +56,9 @@ int alcs_observe_notify(CoAPContext *context, const char *path, CoAPLenString* p
 //resource
 int alcs_resource_register(CoAPContext *context, const char* pk, const char* dn, const char *path, unsigned short permission,
             unsigned int ctype, unsigned int maxage, char needAuth, CoAPRecvMsgHandler callback);
-
+#ifdef DEVICE_MODEL_GATEWAY 
+void alcs_resource_unregister(void *handle, const char* pk, const char* dn);
+#endif
 int alcs_resource_need_auth (CoAPContext *context, const char *path);
 
 

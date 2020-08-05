@@ -3,14 +3,12 @@ include $(CURDIR)/src/tools/internal_make_funcs.mk
 SWITCH_VARS := \
 $(shell grep '''config [_A-Z]*''' \
     $(wildcard $(TOP_DIR)/*/*/*/Config.in) $(wildcard $(TOP_DIR)/*/*/Config.in) \
-        | awk -F':' '{print $$NF}' \
+        | cut -d: -f2 \
         | grep -v menuconfig \
         | grep -v SRCPATH \
-        | awk -F' ' '{ print $$NF }' \
+        | awk '{ print $$NF }' \
 )
-
 SWITCH_VARS := $(foreach V,$(sort $(SWITCH_VARS)),FEATURE_$(V))
-
 
 $(foreach v, \
     $(SWITCH_VARS), \
@@ -24,8 +22,10 @@ endif
 
 ifeq (y,$(strip $(FEATURE_DEVICE_MODEL_RAWDATA_SOLO)))
     CFLAGS += -DDM_MESSAGE_CACHE_DISABLED
+    CFLAGS += -DDEVICE_MODEL_RAWDATA_SOLO
 endif
 
+ifneq (Darwin,$(shell uname))
 ifeq (y,$(strip $(FEATURE_WIFI_PROVISION_ENABLED)))
     CFLAGS += -DAWSS_SUPPORT_APLIST
 
@@ -54,6 +54,7 @@ ifeq (y,$(strip $(FEATURE_WIFI_PROVISION_ENABLED)))
         CFLAGS += -DAWSS_DISABLE_ENROLLEE \
                   -DAWSS_DISABLE_REGISTRAR
     endif
+endif
 endif
 
 ifeq (y,$(strip $(FEATURE_COAP_COMM_ENABLED)))
@@ -97,8 +98,4 @@ endif
 
 ifeq (y,$(strip $(FEATURE_DM_UNIFIED_SERVICE_POST)))
     CFLAGS += -DDM_UNIFIED_SERVICE_POST
-endif
-
-ifeq (y,$(strip $(FEATURE_DM_SUBDEV_NEW_CONNECT)))
-    CFLAGS += -DDM_SUBDEV_NEW_CONNECT
 endif

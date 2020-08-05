@@ -21,6 +21,9 @@ typedef struct {
     uint32_t send_id;
 } alcs_mqtt_ctx_t;
 
+#ifndef DEVICE_MODEL_GATEWAY 
+#define ALCS_KEY                                       "ALCS_KEY"
+#endif
 #define ALCS_MQTT_PREFIX                                       "/sys/%s/%s"
 
 #define ALCS_MQTT_THING_LAN_PREFIX_GET_REPLY_FMT               "/thing/lan/prefix/get_reply"
@@ -59,6 +62,9 @@ alcs_mqtt_status_e alcs_mqtt_deinit(void *handle, char *product_key, char *devic
 alcs_mqtt_status_e alcs_mqtt_blacklist_update(void *ctx);
 alcs_mqtt_status_e alcs_mqtt_prefixkey_update(void *ctx);
 void alcs_mqtt_add_srv_key(const char *prefix, const char *secret);
+#ifdef DEVICE_MODEL_GATEWAY
+void alcs_mqtt_remove_srv_key(const char *prefix);
+#endif
 alcs_mqtt_status_e alcs_mqtt_prefix_secret_load(const char *pk, uint16_t pk_len,
         const char *dn, uint16_t dn_len,
         char *prefix, char *secret);
@@ -66,5 +72,5 @@ alcs_mqtt_status_e alcs_mqtt_prefix_secret_del(const char *pk, uint16_t pk_len,
         const char *dn, uint16_t dn_len);
 alcs_mqtt_status_e alcs_mqtt_subdev_prefix_get(const char *product_key, const char *device_name);
 alcs_mqtt_status_e alcs_prefixkey_get(const char *product_key, const char *device_name);
-
+void iotx_alcs_get_prefixkey(void);
 #endif

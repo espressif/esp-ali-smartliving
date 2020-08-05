@@ -21,14 +21,14 @@ static int iotx_shadow_delta_response(iotx_shadow_pt pshadow)
     void *buf;
     format_data_t format;
 
-    buf = LITE_malloc(IOTX_SHADOW_DELTA_RESPONSE_LEN);
+    buf = SHADOW_malloc(IOTX_SHADOW_DELTA_RESPONSE_LEN);
     if (NULL == buf) {
         return ERROR_NO_MEM;
     }
 
     iotx_ds_common_format_init(pshadow, &format, buf, IOTX_SHADOW_DELTA_RESPONSE_LEN, "update",
                                "\"state\":{\"desired\":\"null\"");
-    iotx_ds_common_format_finalize(pshadow, &format, "}");
+    iotx_ds_common_format_finalize(pshadow, &format, "}", 0);
 
     rc = iotx_ds_common_publish2update(pshadow, format.buf, format.offset);
 
@@ -43,17 +43,25 @@ static uint32_t iotx_shadow_get_timestamp(const char *pmetadata_desired,
         size_t len_metadata_desired,
         const char *pname)
 {
+    const char *pdata_desired;
     const char *pdata;
+
+    uint32_t ret = 0;
 
     /* attribute be matched, and then get timestamp */
 
-    pdata = LITE_json_value_of((char *)pname, (char *)pmetadata_desired);
+    pdata_desired = LITE_json_value_of((char *)pname, (char *)pmetadata_desired);
 
-    if (NULL != pdata) {
-        pdata = LITE_json_value_of((char *)"timestamp", (char *)pdata);
+    if (NULL != pdata_desired) {
+        pdata = LITE_json_value_of((char *)"timestamp", (char *)pdata_desired);
         if (NULL != pdata) {
-            return atoi(pdata);
+            ret = atoi(pdata);
+            LITE_free(pdata);
+            LITE_free(pdata_desired);
+            return ret;
         }
+
+        LITE_free(pdata_desired);
     }
 
     shadow_err("NOT timestamp in JSON doc");
@@ -70,7 +78,7 @@ static iotx_err_t iotx_shadow_delta_update_attr_value(
 }
 
 
-static void iotx_shadow_delta_update_attr(iotx_shadow_pt pshadow,
+static int iotx_shadow_delta_update_attr(iotx_shadow_pt pshadow,
         const char *json_doc_attr,
         uint32_t json_doc_attr_len,
         const char *json_doc_metadata,
@@ -80,6 +88,7 @@ static void iotx_shadow_delta_update_attr(iotx_shadow_pt pshadow,
     iotx_shadow_attr_pt pattr;
     list_iterator_t *iter;
     list_node_t *node;
+    int need_update = 0;
 
     /* Iterate the list and check JSON document according to list_node.val.pattr_name */
     /* If the attribute be found, call the function registered by calling iotx_shadow_delta_register_attr() */
@@ -89,7 +98,8 @@ static void iotx_shadow_delta_update_attr(iotx_shadow_pt pshadow,
     if (NULL == iter) {
         HAL_MutexUnlock(pshadow->mutex);
         shadow_warning("Allocate memory failed");
-        return ;
+        need_update = 0;
+        return need_update;
     }
 
     while (node = list_iterator_next(iter), NULL != node) {
@@ -99,6 +109,7 @@ static void iotx_shadow_delta_update_attr(iotx_shadow_pt pshadow,
         /* check if match attribute or not be matched */
         if (NULL != pvalue) { /* attribute be matched */
             /* get timestamp */
+            need_update = 1;
             pattr->timestamp = iotx_shadow_get_timestamp(
                                            json_doc_metadata,
                                            json_doc_metadata_len,
@@ -107,19 +118,28 @@ static void iotx_shadow_delta_update_attr(iotx_shadow_pt pshadow,
             /* convert string of JSON value according to destination data type. */
             if (SUCCESS_RETURN != iotx_shadow_delta_update_attr_value(pattr, pvalue, strlen(pvalue))) {
                 shadow_warning("Update attribute value failed.");
+            }else{
+                pattr->method_type = pshadow->inner_data.method_type;
+                pattr->flag_update = 1;
             }
-
+			
+#if 0
             if (NULL != pattr->callback) {
                 HAL_MutexUnlock(pshadow->mutex);
                 /* call related callback function */
                 pattr->callback(pattr);
                 HAL_MutexLock(pshadow->mutex);
             }
+#endif
+            LITE_free(pvalue);
         }
     }
 
+error:
     list_iterator_destroy(iter);
     HAL_MutexUnlock(pshadow->mutex);
+
+    return need_update;
 }
 
 /* handle response ACK of UPDATE */
@@ -130,6 +150,7 @@ void iotx_shadow_delta_entry(
 {
     const char *key_metadata;
     const char *pstate, *pmetadata;
+    int ret = 0;
 
     pstate = LITE_json_value_of((char *)"payload.state.desired", (char *)json_doc);
     if (NULL != pstate) {
@@ -147,7 +168,7 @@ void iotx_shadow_delta_entry(
         return;
     }
 
-    iotx_shadow_delta_update_attr(pshadow,
+    ret = iotx_shadow_delta_update_attr(pshadow,
                                   pstate,
                                   strlen(pstate),
                                   pmetadata,
@@ -157,6 +178,9 @@ void iotx_shadow_delta_entry(
     LITE_free(pmetadata);
 
     /* generate ACK and publish to @update topic using QOS1 */
-    iotx_shadow_delta_response(pshadow);
+    /* if not found related any value, do not need to response */
+    if(ret != 0){
+        iotx_shadow_delta_response(pshadow);
+    }
 }
 

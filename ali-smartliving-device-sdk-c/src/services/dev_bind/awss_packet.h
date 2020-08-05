@@ -31,10 +31,6 @@
 #define TOPIC_ZC_ENROLLEE_REPLY              "/sys/%s/%s/thing/awss/enrollee/found_reply"
 #define TOPIC_ZC_CHECKIN                     "/sys/%s/%s/thing/awss/enrollee/checkin"
 #define TOPIC_ZC_CHECKIN_REPLY               "/sys/%s/%s/thing/awss/enrollee/checkin_reply"
-#ifdef AWSS_BATCH_DEVAP_ENABLE
-#define TOPIC_ZC_BAT_CHECKIN                 "/sys/%s/%s/thing/awss/enrollees/checkin"
-#define TOPIC_ZC_BAT_CHECKIN_REPLY           "/sys/%s/%s/thing/awss/enrollees/checkin_reply"
-#endif
 #define TOPIC_ZC_CIPHER                      "/sys/%s/%s/thing/cipher/get"
 #define TOPIC_ZC_CIPHER_REPLY                "/sys/%s/%s/thing/cipher/get_reply"
 #define TOPIC_MATCH_REPORT                   "/sys/%s/%s/thing/awss/enrollee/match"
@@ -48,13 +44,12 @@
 #define TOPIC_DEV_OFFLINE_OTA_REPLY          "/sys/ota/local/start"
 #define TOPIC_DEV_OFFLINE_OTA_FINISH_NOTIFY  "/sys/ota/local/finish"
 #endif
-#endif
-
 #ifdef DEV_OFFLINE_LOG_ENABLE
-#define TOPIC_DEV_OFFLINE_LOG_GET                "/sys/device/log/get"
-//#define TOPIC_DEV_OFFLINE_LOG_FINISH             "/sys/device/diagonsis/finish"
-//#define TOPIC_DEV_OFFLINE_LOG_FINISH_REPLY       "/sys/device/diagonsis/finish_reply"
+#define TOPIC_DEV_OFFLINE_LOG_GET                "/sys/%s/%s/device/log/get"
+#define TOPIC_DEV_OFFLINE_LOG_GET_FINISH         "/sys/%s/%s/device/log/get/finish"
 #endif
+#define TOPIC_DEV_DIAGNOSIS_FINISH             "/sys/device/diagonsis/finish"
+#endif //DEV_ERRCODE_ENABLE
 
 #define METHOD_DEV_INFO_NOTIFY               "device.info.notify"
 #define METHOD_AWSS_DEV_INFO_NOTIFY          "awss.device.info.notify"
@@ -72,7 +67,9 @@
 #define AWSS_JSON_PARAM                      "params"
 #define AWSS_JSON_CODE                       "code"
 #define AWSS_JSON_ID                         "id"
+#define AWSS_JSON_EXT                        "ext"
 #define AWSS_JSON_TOKEN                      "token"
+#define AWSS_JSON_TOKEN_TYPE                 "tokenType"
 #define AWSS_STATIS_FMT                      "{\"template\":\"timestamp logLevel module traceContext logContent\",\"contents\":[\"%u %s %s %u %s\"]}"
 
 enum {

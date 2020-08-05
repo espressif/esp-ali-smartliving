@@ -134,7 +134,7 @@ void awss_disp_statis();
 #define AWSS_UPDATE_STATIS(idx, type) awss_update_statis(idx, type)
 #define AWSS_CLEAR_STATIS()           awss_clear_statis()
 #define AWSS_DISP_STATIS()            awss_disp_statis()
-#define AWSS_REPORT_STATIS(m)         awss_disp_statis(m)
+#define AWSS_REPORT_STATIS(m)         awss_report_statis(m)
 #else
 #define AWSS_UPDATE_STATIS(idx, type)
 #define AWSS_CLEAR_STATIS()

@@ -51,25 +51,25 @@ int dm_mgr_set_device_secret(_IN_ int devid, _IN_ char device_secret[DEVICE_SECR
 int dm_mgr_dev_initialized(int devid);
 
 #ifdef DEVICE_MODEL_GATEWAY
-    int dm_mgr_upstream_thing_sub_register(_IN_ int devid);
-    int dm_mgr_upstream_thing_sub_unregister(_IN_ int devid);
-    int dm_mgr_upstream_thing_topo_add(_IN_ int devid);
-    int dm_mgr_upstream_thing_topo_delete(_IN_ int devid);
-    int dm_mgr_upstream_thing_subdev_reset(_IN_ int devid);
-    int dm_mgr_upstream_thing_topo_get(void);
-    int dm_mgr_upstream_thing_list_found(_IN_ int devid);
-    int dm_mgr_upstream_combine_login(_IN_ int devid);
-    int dm_mgr_upstream_combine_logout(_IN_ int devid);
+int dm_mgr_upstream_thing_sub_register(_IN_ int devid);
+int dm_mgr_upstream_thing_sub_unregister(_IN_ int devid);
+int dm_mgr_upstream_thing_topo_add(_IN_ int devid);
+int dm_mgr_upstream_thing_topo_delete(_IN_ int devid);
+int dm_mgr_upstream_thing_subdev_reset(_IN_ int devid);
+int dm_mgr_upstream_thing_topo_get(void);
+int dm_mgr_upstream_thing_list_found(_IN_ int devid);
+int dm_mgr_upstream_combine_login(_IN_ int devid);
+int dm_mgr_upstream_combine_logout(_IN_ int devid);
 
-#ifdef DM_SUBDEV_NEW_CONNECT
 int dm_mgr_subdev_connect(int devid, const char *params, int params_len);
-int dm_mgr_all_subdev_connect(_IN_ int devid);
+int dm_mgr_multi_subdev_connect(_IN_ int devid, _IN_ iotx_linkkit_dev_meta_info_t *subdev_list, _IN_ int subdev_total);
+int dm_mgr_subdev_connect_reply(char *payload, int payload_len);
 #endif
 
-#endif
 int dm_mgr_upstream_thing_model_up_raw(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
 #if !defined(DEVICE_MODEL_RAWDATA_SOLO)
 int dm_mgr_upstream_thing_property_post(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
+int dm_mgr_upstream_thing_property_post_to(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len, _IN_ int sendto);
 
 #ifdef DM_UNIFIED_SERVICE_POST
 int dm_mgr_unified_service_post(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
@@ -78,13 +78,9 @@ int dm_mgr_unified_service_post(_IN_ int devid, _IN_ char *payload, _IN_ int pay
 #ifdef LOG_REPORT_TO_CLOUD
     int dm_mgr_upstream_thing_log_post(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len, int force_update);
 #endif
-int dm_mgr_upstream_thing_event_post(_IN_ int devid, _IN_ char *identifier, _IN_ int identifier_len, _IN_ char *method,
-                                     _IN_ char *payload, _IN_ int payload_len);
 int dm_mgr_upstream_thing_deviceinfo_update(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
 int dm_mgr_upstream_thing_deviceinfo_delete(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
-int dm_mgr_upstream_thing_dsltemplate_get(_IN_ int devid);
-int dm_mgr_upstream_thing_dynamictsl_get(_IN_ int devid);
-int dm_mgr_upstream_ntp_request(void);
+
 #ifndef LINK_VISUAL_ENABLE
 int dm_mgr_upstream_thing_service_response(_IN_ int devid, _IN_ char *msgid, _IN_ int msgid_len,
         _IN_ iotx_dm_error_code_t code,
@@ -97,9 +93,15 @@ int dm_mgr_upstream_thing_service_response(_IN_ int devid, _IN_ char *msgid, _IN
 int dm_mgr_upstream_thing_property_get_response(_IN_ int devid, _IN_ char *msgid, _IN_ int msgid_len,
         _IN_ iotx_dm_error_code_t code,
         _IN_ char *payload, _IN_ int payload_len, _IN_ void *ctx);
+#endif /* end of DEVICE_MODEL_RAWDATA_SOLO*/ 
+
+int dm_mgr_upstream_ntp_request(void);
+
+int dm_mgr_upstream_thing_event_post(_IN_ int devid, _IN_ char *identifier, _IN_ int identifier_len, _IN_ char *method,
+                                     _IN_ char *payload, _IN_ int payload_len);
+
 int dm_mgr_upstream_rrpc_response(_IN_ int devid, _IN_ char *msgid, _IN_ int msgid_len, _IN_ iotx_dm_error_code_t code,
                                   _IN_ char *rrpcid, _IN_ int rrpcid_len, _IN_ char *payload, _IN_ int payload_len);
 
 int dm_mgr_upstream_thing_event_notify_reply(_IN_ int devid, _IN_ char *payload, _IN_ int payload_len);
-#endif
 #endif

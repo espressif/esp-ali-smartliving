@@ -14,5 +14,5 @@ wrappers
 
 CFLAGS += -Wno-char-subscripts
 
-LIBS += iot_sdk
-COMPONENT_ADD_LDFLAGS += -L $(COMPONENT_PATH)/ali-smartliving-device-sdk-c/output/release/lib $(addprefix -l,$(LIBS))
+LIBS += iot_sdk awss_security
+COMPONENT_ADD_LDFLAGS += -L $(COMPONENT_PATH)/ali-smartliving-device-sdk-c/output/release/lib -L $(COMPONENT_PATH)/ali-smartliving-device-sdk-c/lib/xtensa $(addprefix -l,$(LIBS))

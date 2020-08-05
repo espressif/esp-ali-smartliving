@@ -59,6 +59,7 @@ ADD_DEFINITIONS (-DSUPPORT_TLS)
 ADD_DEFINITIONS (-DWIFI_PROVISION_ENABLED)
 ADD_DEFINITIONS (-D_PLATFORM_IS_HOST_)
 
+ADD_SUBDIRECTORY (components/timer_service)
 ADD_SUBDIRECTORY (src/infra/utils)
 ADD_SUBDIRECTORY (src/infra/log)
 ADD_SUBDIRECTORY (src/infra/system)
@@ -78,6 +79,7 @@ ADD_SUBDIRECTORY (examples)
 ADD_SUBDIRECTORY (src/ref-impl/tls)
 
 ADD_LIBRARY (iot_sdk SHARED
+    $<TARGET_OBJECTS:iot_timer_service>
     $<TARGET_OBJECTS:iot_utils>
     $<TARGET_OBJECTS:iot_log>
     $<TARGET_OBJECTS:iot_system>

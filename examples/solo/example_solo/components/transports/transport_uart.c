@@ -38,8 +38,10 @@
 
 #if defined(CONFIG_IDF_TARGET_ESP32)
 #define TRANSPORT_UART_TASK_SIZE          6 * 1024
+#define TRANSPORT_UART_BAUD_RATE          115200
 #else
 #define TRANSPORT_UART_TASK_SIZE          2 * 1024
+#define TRANSPORT_UART_BAUD_RATE          115200
 #endif
 #define TRANSPORT_EX_UART_NUM                          UART_NUM_0
 
@@ -70,7 +72,7 @@ static int transport_uart_init(void)
     // Configure parameters of an UART driver,
     // communication pins and install the driver
     uart_config_t uart_conf = {
-        .baud_rate = 115200,
+        .baud_rate = TRANSPORT_UART_BAUD_RATE,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,

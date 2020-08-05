@@ -71,6 +71,7 @@ static esp_err_t conn_mgr_wifi_connect(void)
 
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config);
+    esp_wifi_start();
     esp_wifi_connect();
 
     return ESP_OK;
@@ -118,8 +119,8 @@ static esp_err_t conn_mgr_obtain_time(void)
 
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "ntp1.aliyun.com");
-    sntp_setservername(1, "ntp2.aliyun.com");
-    sntp_setservername(2, "ntp3.aliyun.com");
+    sntp_setservername(1, "cn.ntp.org.cn");
+    sntp_setservername(2, "cn.pool.ntp.org");
     sntp_init();
     // Set timezone to China Standard Time
     setenv("TZ", "CST-8", 1);

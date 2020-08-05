@@ -67,6 +67,21 @@ static esp_err_t wifi_event_handle(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
+static conn_sc_mode_t get_sc_mode(void)
+{
+    int ret = ESP_FAIL;
+    uint8_t mode_kv = 0;
+    int len_kv = sizeof(uint8_t);
+
+    ret = HAL_Kv_Get(SC_MODE, &mode_kv, &len_kv);
+
+    if (ret == ESP_OK && mode_kv == CONN_SOFTAP_MODE) {
+        return CONN_SOFTAP_MODE;
+    }
+
+    return CONN_SC_ZERO_MODE;
+}
+
 static void linkkit_event_monitor(int event)
 {
     switch (event) {
@@ -153,8 +168,10 @@ static void linkkit_event_monitor(int event)
 
         case IOTX_AWSS_ENABLE_TIMEOUT: // AWSS enable timeout
             // user needs to enable awss again to support get ssid & passwd of router
-            ESP_LOGW(TAG, "IOTX_AWSS_ENALBE_TIMEOUT");
-            conn_mgr_stop();
+            if (get_sc_mode() != CONN_SOFTAP_MODE) {
+                ESP_LOGW(TAG, "IOTX_AWSS_ENALBE_TIMEOUT");
+                conn_mgr_stop();
+            }
             printf("heap:%u, max:%u\r\n", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
             // operate led to indicate user
             break;
@@ -236,6 +253,6 @@ void app_main()
     print_app_config();
     //xTaskCreate((void (*)(void *))print_heap, "print_heap", 2048, NULL, 5, NULL);
     if (app_check_config_pk()) {
-        xTaskCreate(start_conn_mgr, "conn_mgr", 3072, NULL, 5, NULL);
+        xTaskCreate(start_conn_mgr, "conn_mgr", CONN_MGR_TASK_SIZE, NULL, 4, NULL);
     }
 }

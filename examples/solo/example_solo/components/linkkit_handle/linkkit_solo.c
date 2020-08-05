@@ -8,7 +8,11 @@
 #include "transport_uart.h"
 
 #define USER_EXAMPLE_YIELD_TIMEOUT_MS (200)
-
+#ifdef CONFIG_IDF_TARGET_ESP8266
+#define OTA_BUFFER_SIZE 512
+#else
+#define OTA_BUFFER_SIZE 1024
+#endif
 #define EXAMPLE_TRACE(...)                               \
     do {                                                     \
         HAL_Printf("\033[1;32;40m%s.%d: ", __func__, __LINE__);  \
@@ -318,8 +322,8 @@ static int user_initialized(const int devid)
   */
 static int user_fota_event_handler(int type, const char *version)
 {
-    char buffer[513] = {0};
-    int buffer_length = 513;
+    char buffer[OTA_BUFFER_SIZE + 1] = {0};
+    int buffer_length = OTA_BUFFER_SIZE + 1;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
 
     if (type == 0) {
@@ -327,6 +331,7 @@ static int user_fota_event_handler(int type, const char *version)
 extern bool transport_task_exist_flag;
         transport_task_exist_flag = true;
         if (IOT_Linkkit_Query(user_example_ctx->master_devid, ITM_MSG_QUERY_FOTA_DATA, (unsigned char *)buffer, buffer_length) == SUCCESS_RETURN) {
+            HAL_SleepMs(2000);
             HAL_Reboot();
         } else {
             transport_uart_task_create();
@@ -425,6 +430,10 @@ static int linkkit_thread(void *paras)
 
     /* Choose Login Method */
     int dynamic_register = 0;
+    if (!strlen(master_meta_info.device_secret)) {
+        EXAMPLE_TRACE("Not found device secret, start to dynamic register");
+        dynamic_register = 1;
+    }
     IOT_Ioctl(IOTX_IOCTL_SET_DYNAMIC_REGISTER, (void *)&dynamic_register);
 
     /* Choose Whether You Need Post Property/Event Reply */

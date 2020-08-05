@@ -30,6 +30,7 @@
 #include "transport_data.h"
 #include "conn_mgr.h"
 #include "iot_import.h"
+#include "app_entry.h"
 
 static const char *TAG = "app_entry";
 
@@ -38,6 +39,9 @@ static const char *TAG = "app_entry";
 #define AWSS_RESET_NAME   "reset"
 #define AWSS_CONN_NAME    "netmgr connect"
 #define AWSS_CONFIG_NAME  "linkkey"
+#define AWSS_REBOOT_NAME  "reboot"
+#define AWSS_KV_ERASE_DY_SECRET_NAME  "kv_clear"
+#define KV_KEY_DEVICE_SECRET            "DRDevSecret"
 #define AWSS_KV_RST       "awss.rst"
 static bool s_conn_mgr_exist = false;
 
@@ -78,6 +82,15 @@ void app_get_input_param(char *param, size_t param_len)
 {
     if (!param) {
         ESP_LOGE(TAG, "Input error");
+        return;
+    }
+
+    if (!strncmp(param, AWSS_REBOOT_NAME, strlen(AWSS_REBOOT_NAME))) {
+        ESP_LOGI(TAG, "Reboot now");
+        esp_restart();
+    } else if (!strncmp(param, AWSS_KV_ERASE_DY_SECRET_NAME, strlen(AWSS_KV_ERASE_DY_SECRET_NAME))) {
+        ESP_LOGI(TAG, "Clear DY DeviceSecrt KV");
+        HAL_Kv_Del(KV_KEY_DEVICE_SECRET);
         return;
     }
 
@@ -135,9 +148,16 @@ void app_get_input_param(char *param, size_t param_len)
         }
         conn_mgr_set_sc_mode(CONN_SOFTAP_MODE);
     } else if (strstr(param, AWSS_RESET_NAME)) {
-        char rst = 0x01;
+        char rst = 0;
+        int len = 1;
         conn_mgr_reset_wifi_config();
-        HAL_Kv_Set(AWSS_KV_RST, &rst, sizeof(rst), 0);
+        HAL_Kv_Get(AWSS_KV_RST_FLAG, &rst, &len);
+        if (!rst) {
+            ESP_LOGI(TAG, "Reset and unbind device");
+            rst = 1;
+            awss_report_reset();
+            vTaskDelay(2000 / portTICK_RATE_MS);
+        }
         esp_restart();
     } else if (strstr(param, AWSS_CONN_NAME)) {
         uint32_t len = 0;
@@ -160,5 +180,5 @@ void app_get_input_param(char *param, size_t param_len)
         return;
     }
 
-    xTaskCreate(start_conn_mgr, "conn_mgr", 3072, NULL, 5, NULL);
+    xTaskCreate(start_conn_mgr, "conn_mgr", CONN_MGR_TASK_SIZE, NULL, 5, NULL);
 }

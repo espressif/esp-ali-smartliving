@@ -182,7 +182,10 @@ static int ota_security_ota_check(void *pcontext)
     OTA_Struct_pt h_ota = (OTA_Struct_pt) pcontext;
     if (h_ota->digestsign) {
         printf("enter security check\n");
+        HAL_Firmware_Need_Check_Security_Ota(1);
         return HAL_OTA_Security_check(h_ota->digestsign, h_ota->sign, h_ota->signMethod);
+    } else {
+        HAL_Firmware_Need_Check_Security_Ota(0);
     }
 
     return 0;
@@ -223,6 +226,11 @@ static int ota_callback(void *pcontext, const char *msg, uint32_t msg_len, iotx_
                 return -1;
             }
 
+            if (NULL != h_ota->digestsign) {
+                OTA_FREE(h_ota->digestsign);
+                h_ota->digestsign = NULL;
+            }
+
             if (0 != otalib_GetFotaParams(pvalue, val_len, &h_ota->version, &h_ota->size_file,
                                             &h_ota->sign, &h_ota->signMethod, &h_ota->purl, &h_ota->digestsign)) {
                 OTA_LOG_ERROR("Get firmware parameter failed");
@@ -231,6 +239,7 @@ static int ota_callback(void *pcontext, const char *msg, uint32_t msg_len, iotx_
 #ifdef SUPPORT_SECURITY_OTA
             if (0 != ota_security_ota_check(pcontext)) {
                 OTA_LOG_ERROR("Check ota security failed");
+                IOT_OTA_ReportProgress(pcontext, IOT_OTAP_CHECK_FALIED, NULL);
                 return -1;
             }
 #endif
@@ -1086,6 +1095,7 @@ int IOT_OTA_Ioctl(void *handle, IOT_OTA_CmdType_t type, void *buf, size_t buf_le
                     char md5_str[33];
                     otalib_MD5Finalize(h_ota->md5, md5_str);
                     OTA_LOG_DEBUG("origin=%s, now=%s", h_ota->sign, md5_str);
+                    printf("MD5:origin=%s, now=%s\n", h_ota->sign, md5_str);
                     if (0 == strcmp(h_ota->sign, md5_str)) {
                         *((uint32_t *)buf) = 1;
                     } else {
@@ -1096,6 +1106,7 @@ int IOT_OTA_Ioctl(void *handle, IOT_OTA_CmdType_t type, void *buf, size_t buf_le
                     char sha256_str[65];
                     otalib_Sha256Finalize(h_ota->sha256, sha256_str);
                     OTA_LOG_DEBUG("origin=%s, now=%s", h_ota->sign, sha256_str);
+                    printf("SHA256:origin=%s, now=%s\n", h_ota->sign, sha256_str);
                     if (0 == strcmp(h_ota->sign, sha256_str)) {
                         *((uint32_t *)buf) = 1;
                     } else {

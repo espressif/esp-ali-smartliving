@@ -44,7 +44,7 @@
 #define COAP_CUR_VERSION        1
 #define COAP_MAX_MESSAGE_ID     65535
 #define COAP_MAX_RETRY_COUNT    8
-#define COAP_ACK_TIMEOUT        600
+#define COAP_ACK_TIMEOUT        2
 #define COAP_ACK_RANDOM_FACTOR  1
 
 int CoAPMessage_print_sendlist(CoAPContext *context);
@@ -763,7 +763,8 @@ static int CoAPRequestMessage_handle(CoAPContext *context, NetworkAddr *remote, 
     unsigned char  *tmp = path;
     CoAPIntContext *ctx = (CoAPIntContext *)context;
     COAP_FLOW("CoAPRequestMessage_handle: %p", ctx);
-
+    static unsigned short old_msgid[5] = {0};
+    int insert_index = 0;
     // TODO: if need only one callback
     for (index = 0; index < message->optcount; index++) {
         if (COAP_OPTION_URI_PATH == message->options[index].num) {
@@ -783,6 +784,18 @@ static int CoAPRequestMessage_handle(CoAPContext *context, NetworkAddr *remote, 
         if (NULL != resource->callback) {
             if (message->header.type == COAP_MESSAGE_TYPE_CON) {  // send ACK to prevent client retransmit the same pkt.
                 CoAPRequestMessage_ack_send(ctx, remote, message->header.msgid);
+                if (strstr((char *)path, "/thing/service/property/set")) {
+                    for (int i = 0; i < 5; i ++) {
+                        if (old_msgid[i] == message->header.msgid) {
+                            COAP_FLOW("This is a duplicate packet, id %d, ignore", message->header.msgid);
+                            return COAP_SUCCESS;
+                        }
+                        if (old_msgid[insert_index] > old_msgid[i]) {
+                            insert_index = i;
+                        }
+                    }
+                    old_msgid[insert_index] = message->header.msgid;
+                }
             }
             if (((resource->permission) & (1 << ((message->header.code) - 1))) > 0) {
                 resource->callback(ctx, (char *)path, remote, message);

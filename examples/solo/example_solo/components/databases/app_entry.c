@@ -41,7 +41,7 @@ static const char *TAG = "app_entry";
 #define AWSS_CONFIG_NAME  "linkkey"
 #define AWSS_REBOOT_NAME  "reboot"
 #define AWSS_KV_ERASE_DY_SECRET_NAME  "kv_clear"
-#define KV_KEY_DEVICE_SECRET            "DRDevSecret"
+#define KV_KEY_DEVICE_SECRET            "DyncRegDeviceSecret"
 static bool s_conn_mgr_exist = false;
 
 int app_check_config_pk(void)

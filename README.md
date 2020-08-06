@@ -12,7 +12,7 @@
 # <span id = "Introduction">0.介绍</span>
 [乐鑫](https://www.espressif.com/zh-hans)是高集成度芯片的设计专家，专注于设计简单灵活、易于制造和部署的解决方案。乐鑫研发和设计 IoT 业内集成度高、性能稳定、功耗低的无线系统级芯片，乐鑫的模组产品集成了自主研发的系统级芯片，因此具备强大的 Wi-Fi 和蓝牙功能，以及出色的射频性能。
 
-[生活物联网平台 SDK ](https://code.aliyun.com/living_platform/ali-smartliving-device-sdk-c.git)是阿里云 IoT 针对生活物联网平台所提供的设备端 SDK。SDK 基于 C 语言开发，代码开源，提供了 API 供您调用，用于实现与阿里云 IoT 平台通信以及其它的辅助功能（例如 WiFi 配网、本地控制等）。当前 ali-smartliving-device-sdk-c 是基于[ SDK 仓库](https://code.aliyun.com/living_platform/ali-smartliving-device-sdk-c.git), 分支 [rel_1.3.0](https://code.aliyun.com/living_platform/ali-smartliving-device-sdk-c/tree/rel_1.3.0) 进行开发。
+[生活物联网平台 SDK ](https://code.aliyun.com/living_platform/ali-smartliving-device-sdk-c.git)是阿里云 IoT 针对生活物联网平台所提供的设备端 SDK。SDK 基于 C 语言开发，代码开源，提供了 API 供您调用，用于实现与阿里云 IoT 平台通信以及其它的辅助功能（例如 WiFi 配网、本地控制等）。当前 ali-smartliving-device-sdk-c 是基于[ SDK 仓库](https://code.aliyun.com/living_platform/ali-smartliving-device-sdk-c.git), 分支 [rel_1.6.0](https://code.aliyun.com/living_platform/ali-smartliving-device-sdk-c/tree/rel_1.6.0) 进行开发。
 
 # <span id = "aim">1.目的</span>
 本文基于 linux 环境，介绍 ESP 设备对接阿里云生活物联网平台 & 天猫精灵 IoT 开放平台的具体流程，供读者参考。

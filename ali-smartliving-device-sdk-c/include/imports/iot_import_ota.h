@@ -45,5 +45,37 @@ DLL_HAL_API int HAL_Firmware_Persistence_Write(_IN_ char *buffer, _IN_ uint32_t 
  */
 DLL_HAL_API int HAL_Firmware_Persistence_Stop(void);
 
+/**
+ * @brief check security OTA.
+ *
+ * @param[in] digest: @n A pointer to digest data.
+ * @param[in] sign:   @n A pointer to sign data.
+ * @param[in] signMethod: @n A pointer to signMethod data.
+ * @return 0: Success; -1: Failure.
+ * @see None.
+ * @note None.
+ */
+DLL_HAL_API int HAL_OTA_Security_check(const char *digest, const char *sign, const char *signMethod);
+
+/**
+ * @brief check firmware RSA public key.
+ *
+ * @param[in] buffer: @n A pointer to a buffer.
+ * @param[in] length: @n The length, in bytes, of the data pointed to by the buffer parameter.
+ * @return 0, Check success; -1, Check failure.
+ * @see None.
+ * @note None.
+ */
+DLL_HAL_API int HAL_Firmware_Check_Rsa_Key(_IN_ char *buffer, _IN_ uint32_t length);
+
+/**
+ * @brief set security ota flag.
+ *
+ * @param[in] flag: @n Security OTA flag.
+ * @return None.
+ * @see None.
+ * @note None.
+ */
+DLL_HAL_API void HAL_Firmware_Need_Check_Security_Ota(uint8_t flag);
 #endif  /* __IOT_IMPORT_UOTA_H__ */
 

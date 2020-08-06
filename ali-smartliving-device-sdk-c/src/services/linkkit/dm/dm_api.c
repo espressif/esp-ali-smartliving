@@ -167,6 +167,7 @@ int iotx_dm_connect(_IN_ iotx_dm_init_params_t *init_params)
 
 #ifdef ALCS_ENABLED
     /* DM Connect Local */
+    #if 0
     do{
         res = dm_server_connect();
         if (res < 0) {
@@ -174,10 +175,11 @@ int iotx_dm_connect(_IN_ iotx_dm_init_params_t *init_params)
             HAL_SleepMs(2000);
         }
     }while(res < 0);
-    // res = dm_server_connect();
-    // if (res != SUCCESS_RETURN) {
-    //     return FAIL_RETURN;
-    // }
+    #endif
+    res = dm_server_connect();
+    if (res != SUCCESS_RETURN) {
+        return FAIL_RETURN;
+    }
 #endif
 
 #ifdef MQTT_SHADOW

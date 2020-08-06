@@ -22,6 +22,3 @@ component_compile_options(-DAUTH_MODE_CERT)
 target_link_libraries(${COMPONENT_TARGET} "-L ${lib_path}")
 target_link_libraries(${COMPONENT_TARGET} iot_sdk)
 target_link_libraries(${COMPONENT_TARGET} -u ota_pubn_buf)
-target_link_libraries(${COMPONENT_TARGET} "-L ${CMAKE_CURRENT_SOURCE_DIR}/ali-smartliving-device-sdk-c/lib/xtensa")
-target_link_libraries(${COMPONENT_TARGET} awss_security)
-

@@ -1,6 +1,7 @@
 stages:
   - build_esp8266
   - build_esp32
+  - build_esp32s2
   - deploy
 
 variables:
@@ -16,20 +17,15 @@ build_esp8266_demo:
   tags:
     - build
   script:
-    # add gitlab ssh key
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
-    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    - git clone --recursive $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git --single-branch -b release/v3.3
+    # use github clone repository
+    - git clone --recursive https://github.com/espressif/ESP8266_RTOS_SDK.git --single-branch -b release/v3.3
     - export IDF_PATH=$CI_PROJECT_DIR/ESP8266_RTOS_SDK
     - cd ali-smartliving-device-sdk-c
     - make distclean
-    - echo 2 | make reconfig
+    - echo 3 | make reconfig
     - make -j1
     - cd ../examples/solutions/smart_light
+    - rm -rf build/ sdkconfig sdkconfig.old
     - make chip=esp8266 defconfig
     - make
 
@@ -39,20 +35,15 @@ build_esp32_demo:
   tags:
     - build
   script:
-    # add gitlab ssh key
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
-    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    - git clone --recursive $GITLAB_SSH_SERVER/idf/esp-idf.git --single-branch -b release/v3.3
+    # use github clone repository
+    - git clone --recursive https://github.com/espressif/esp-idf.git --single-branch -b release/v3.3
     - export IDF_PATH=$CI_PROJECT_DIR/esp-idf
     - cd ali-smartliving-device-sdk-c
     - make distclean
     - echo 1 | make reconfig
     - make -j1
     - cd ../examples/solutions/smart_light
+    - rm -rf build/ sdkconfig sdkconfig.old
     - make chip=esp32 defconfig
     - make
 
@@ -62,21 +53,36 @@ build_esp32_demo_cmake_v3.3:
   tags:
     - build
   script:
-    # add gitlab ssh key
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
-    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    - git clone --recursive $GITLAB_SSH_SERVER/idf/esp-idf.git --single-branch -b release/v3.3
+    # use github clone repository
+    - git clone --recursive https://github.com/espressif/esp-idf.git --single-branch -b release/v3.3
     - export IDF_PATH=$CI_PROJECT_DIR/esp-idf
     - cd ali-smartliving-device-sdk-c
     - make distclean
     - echo 1 | make reconfig
     - make -j1
     - cd ../examples/solutions/smart_light
+    - rm -rf build/ sdkconfig sdkconfig.old
     - $IDF_PATH/tools/idf.py build
+
+build_esp32s2_demo_cmake_master:
+  stage: build_esp32s2
+  image: $CI_DOCKER_REGISTRY/esp32-ci-env
+  tags:
+    - build
+  script:
+    # use github clone repository
+    - git clone --recursive https://github.com/espressif/esp-idf.git --single-branch -b master
+    - export IDF_PATH=$CI_PROJECT_DIR/esp-idf
+    - $IDF_PATH/install.sh
+    - . $IDF_PATH/export.sh
+    - cd ali-smartliving-device-sdk-c
+    - make distclean
+    - echo 2 | make reconfig
+    - make -j1
+    - cd ../examples/solo/example_solo
+    - rm -rf build/ sdkconfig sdkconfig.old
+    - idf.py set-target esp32s2
+    - idf.py build
 
 push_to_github:
   stage: deploy

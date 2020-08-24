@@ -34,6 +34,7 @@ cd examples/solo/example_solo
 make chip=esp32 defconfig 或者 make chip=esp8266 defconfig
 make -j8 flash monitor
 ```
+使用 esp32s2 请参考根目录 README。
 
 #### 5.命令手册
 
@@ -83,7 +84,7 @@ kv_clear
 
 #### 6.串口配置
 
-||ESP32|ESP8266|
+||ESP32 & ESP32S2|ESP8266|
 |:-----:|:-----:|:-----:|
 |CMD_RX|RXD|RXD|
 |CMD_TX|TXD|TXD|

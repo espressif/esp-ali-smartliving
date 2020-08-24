@@ -21,3 +21,4 @@ component_compile_options(-DAUTH_MODE_CERT)
 
 target_link_libraries(${COMPONENT_TARGET} "-L ${lib_path}")
 target_link_libraries(${COMPONENT_TARGET} iot_sdk)
+target_link_libraries(${COMPONENT_TARGET} -u ota_pubn_buf)

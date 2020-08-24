@@ -36,11 +36,11 @@
 #include "transport_uart.h"
 #include "transport_data.h"
 
-#if defined(CONFIG_IDF_TARGET_ESP32)
-#define TRANSPORT_UART_TASK_SIZE          6 * 1024
+#if defined(CONFIG_IDF_TARGET_ESP8266)
+#define TRANSPORT_UART_TASK_SIZE          2 * 1024
 #define TRANSPORT_UART_BAUD_RATE          115200
 #else
-#define TRANSPORT_UART_TASK_SIZE          2 * 1024
+#define TRANSPORT_UART_TASK_SIZE          6 * 1024
 #define TRANSPORT_UART_BAUD_RATE          115200
 #endif
 #define TRANSPORT_EX_UART_NUM                          UART_NUM_0
@@ -82,7 +82,7 @@ static int transport_uart_init(void)
 
     uart_param_config(TRANSPORT_EX_UART_NUM, &uart_conf);
 
-#if defined(CONFIG_IDF_TARGET_ESP32)
+#ifndef CONFIG_IDF_TARGET_ESP8266
     //Set UART pins,(-1: default pin, no change.)
     uart_set_pin(TRANSPORT_EX_UART_NUM, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 #endif

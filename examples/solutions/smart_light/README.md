@@ -79,7 +79,7 @@
 > 如果执行了 `make erase_flash`，需要重新烧录三元组。
 
 #### 5.配置 `smart light example`
-- RGB 灯分别接 ESP32/ESP8266 开发板上 `GPIO0`，`GPIO2`，`GPIO4` (可在 `lightbulb.c` 中修改)
+- RGB 灯分别接 ESP32 & ESP32S2/ESP8266 开发板上 `GPIO0`，`GPIO2`，`GPIO4` (可在 `lightbulb.c` 中修改)
 
 #### 6.编译 `smart light` 并烧录运行
 ```
@@ -87,6 +87,7 @@ cd examples/solutions/smart_light
 make chip=esp32 defconfig 或者 make chip=esp8266 defconfig
 make -j8 flash monitor
 ```
+使用 esp32s2 请参考根目录 README。
 
 > 在测试配网中，请先执行 `make erase_flash` .
 

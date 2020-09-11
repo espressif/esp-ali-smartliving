@@ -238,7 +238,7 @@ int HAL_ThreadCreate(
     }
 
     *stack_used = 0;
-    printf("task name is %s\n", hal_os_thread_param->name);
+    ESP_LOGI(TAG, "task name is %s\n", hal_os_thread_param->name);
 
     if (hal_os_thread_param->stack_size == 0) {
         ret = pthread_create((pthread_t *)thread_handle, NULL, work_routine, arg);

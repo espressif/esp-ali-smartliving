@@ -84,7 +84,7 @@
 #### 6.编译 `smart light` 并烧录运行
 ```
 cd examples/solutions/smart_light
-make chip=esp32 defconfig 或者 make chip=esp8266 defconfig
+make defconfig 或者 make defconfig
 make -j8 flash monitor
 ```
 使用 esp32s2 请参考根目录 README。

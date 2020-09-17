@@ -32,7 +32,7 @@
 #### 5.编译 `awss` 并烧录运行
 ```
 cd examples/awss
-make chip=esp32 defconfig 或者 make chip=esp8266 defconfig
+make defconfig 或者 make defconfig
 make -j8 flash monitor
 ```
 

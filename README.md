@@ -78,21 +78,12 @@ make (生成相关头文件和库文件)
 ```
 
 ### 6.1.3 编译 demo 示例
-**由于 esp32 和 esp8266 将会采用不同的 sdkconfig.defaults 和对应的 partitions.csv，在对应的 make 命令中加入了对应的芯片选项，如 chip=esp32 或 chip=esp8266。**
-
-当 chip=esp32 时将默认使用 sdkconfig_esp32.defaults 以及 partitions_esp32.csv。
-
-当 chip=esp8266 时将默认使用 sdkconfig_esp8266.defaults 以及 partitions_esp8266.csv。
-
-当使用 esp32s2 时，将默认使用 sdkconfig.defaults ，sdkconfig.defaults.esp32s2 以及 partitions_esp32s2.csv，编译方式与 8266 & 32 都不一样，需要使用 cmake 进行编译。
-
-以上需要特别注意。
 
 在 esp-ali-smartliving 目录下执行：
 
 ```
 cd examples/solutions/smart_light
-make chip=esp32 defconfig
+make defconfig
 make menuconfig
 ```
 如果需要编译esp32s2版本, 请按照如下步骤修改编译:
@@ -107,6 +98,8 @@ idf.py set-target esp32s2
 idf.py menuconfig
 ```
 
+如果使用 cmake 编译 esp32，不需要 set-target。
+
 - 配置烧写串口
 
 2.生成最终 bin
@@ -120,8 +113,17 @@ make -j8
 idf.py build
 ```
 
+### 6.1.4 使用 build shell 脚本编译运行
+
+1. 按照第 4 节搭建好编译环境，配置好 SDK 路径。
+
+2. 运行工程目录下 **build.sh** 文件，根据提示进行编译，当前该工具只支持 example_solo 和 smart_light 两个示例。
+
+脚本可以支持包括：芯片 SDK 的选择，ali-smartliving-sdk-c 的编译配置，示例的编译。
+
+按照提示执行，直至出现 **Now build all bin successfully!!!** 表示编译成功，可以按照提示进行烧录运行。
 ## 6.2 擦除 & 编译烧写 & 下载固件 & 查看 log
-将 USB 线连接好 ESP 设备和 PC,确保烧写端口正确。 
+将 USB 线连接好 ESP 设备和 PC，确保烧写端口正确。 
 
 ### 6.2.1[可选] 擦除 flash
 ```

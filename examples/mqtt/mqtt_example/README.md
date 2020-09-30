@@ -32,7 +32,7 @@
 #### 5.编译 `mqtt_example` 并烧录运行
 ```
 cd examples/mqtt/mqtt_example
-make chip=esp32 defconfig 或者 make chip=esp8266 defconfig
+make defconfig 或者 make defconfig
 make menuconfig
 ```
 

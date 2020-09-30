@@ -63,7 +63,7 @@ push_to_github:
     - master
     - /^release\/v/
 #  when: on_success
-  image: espressif/ae-esp32-ci-env:latest-3cf42c4c
+  image: espressif/esp32-ci-env
   variables:
     GIT_STRATEGY: clone
     GITHUB_PUSH_REFS: refs/remotes/origin/release refs/remotes/origin/master

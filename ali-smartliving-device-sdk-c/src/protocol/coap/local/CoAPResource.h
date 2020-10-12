@@ -37,7 +37,9 @@ int CoAPPathMD5_sum(const char *path, int len, char outbuf[], int outlen);
 int CoAPResource_register(CoAPContext *context, const char *path,
                           unsigned short permission, unsigned int ctype,
                           unsigned int maxage, CoAPRecvMsgHandler callback);
-
+#ifdef DEVICE_MODEL_GATEWAY 
+int CoAPResource_unregister(CoAPContext *context, const char *path);
+#endif
 CoAPResource *CoAPResourceByPath_get(CoAPContext *context, const char *path);
 
 int CoAPResource_deinit(CoAPContext *context);

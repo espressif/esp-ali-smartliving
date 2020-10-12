@@ -14,6 +14,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 
+#define COAP_OBSERVE_CLIENT_DISABLE
 #define COAP_MSG_MAX_TOKEN_LEN    8
 #define COAP_MSG_MAX_OPTION_NUM   12
 #define COAP_MSG_MAX_PATH_LEN     128
@@ -23,6 +24,7 @@ extern "C" {
 #define COAP_MSG_MAX_PDU_LEN      4096
 #endif
 
+#define COAP_CUR_VERSION           0x01
 
 /*CoAP Content Type*/
 #define COAP_CT_TEXT_PLAIN                 0   /* text/plain (UTF-8) */
@@ -54,6 +56,7 @@ extern "C" {
 #define COAP_OPTION_PROXY_SCHEME   39   /* C, String,  1-255 B, (none) */
 #define COAP_OPTION_SIZE1          60   /* E, uint,    0-4 B, (none) */
 #define COAP_OPTION_AUTH_TOKEN     61   /* C, String,  1-255B, (none)*/
+#define COAP_OPTION_NO_RESPONSE    258  /* C, uint,    0-1B , No-Response */
 
 #define COAP_PERM_NONE             0x0000
 #define COAP_PERM_GET              0x0001
@@ -183,6 +186,7 @@ struct CoAPMessage {
     CoAPSendMsgHandler handler;
     void           *user;
     int             keep;
+    uint64_t        timestamp;
 };
 
 typedef struct {

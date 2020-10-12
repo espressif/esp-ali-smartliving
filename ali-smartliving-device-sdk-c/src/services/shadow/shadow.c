@@ -46,6 +46,7 @@ static void iotx_ds_handle_expire(iotx_shadow_pt pshadow)
 static void iotx_shadow_callback_get(iotx_shadow_pt pshadow, void *pclient, iotx_mqtt_event_msg_pt msg)
 {
     const char *pname;
+    int ret = FAIL_RETURN;
 
     iotx_mqtt_topic_info_pt topic_info = (iotx_mqtt_topic_info_pt)msg->msg;
 
@@ -55,14 +56,20 @@ static void iotx_shadow_callback_get(iotx_shadow_pt pshadow, void *pclient, iotx
     /* update time if there is 'timestamp' key in JSON string */
     pname = LITE_json_value_of((char *)"timestamp", (char *)topic_info->payload);
     if (NULL != pname) {
-        iotx_ds_common_update_time(pshadow, atoi(pname));
+        if(FAIL_RETURN == iotx_ds_common_update_time(pshadow, atoi(pname))){
+            LITE_free(pname);
+            return;
+        }
     }
     LITE_free(pname);
 
     /* update 'version' if there is 'version' key in JSON string */
     pname = LITE_json_value_of((char *)"version", (char *)topic_info->payload);
     if (NULL != pname) {
-        iotx_ds_common_update_version(pshadow, atoi(pname));
+        if(FAIL_RETURN == iotx_ds_common_update_version(pshadow, atoi(pname))){
+            LITE_free(pname);
+            return;
+        }
         LITE_free(pname);
     }
 
@@ -74,6 +81,7 @@ static void iotx_shadow_callback_get(iotx_shadow_pt pshadow, void *pclient, iotx
     } else if ((strlen("control") == strlen(pname)) && !strcmp(pname, "control")) {
         /* call delta handle function */
         shadow_debug("receive 'control' method");
+        pshadow->inner_data.method_type = SHADOW_DOWNSTREAM_METHOD_CONTROL;
 
         iotx_shadow_delta_entry(
                     pshadow,
@@ -83,6 +91,7 @@ static void iotx_shadow_callback_get(iotx_shadow_pt pshadow, void *pclient, iotx
     } else if ((strlen("reply") == strlen(pname)) && !strcmp(pname, "reply")) {
         /* call update ACK handle function. */
         shadow_debug("receive 'reply' method");
+        pshadow->inner_data.method_type = SHADOW_DOWNSTREAM_METHOD_REPLY;
         iotx_ds_update_wait_ack_list_handle_response(
                     pshadow,
                     topic_info->payload,
@@ -92,6 +101,7 @@ static void iotx_shadow_callback_get(iotx_shadow_pt pshadow, void *pclient, iotx
         shadow_err("Invalid 'method' key");
         LITE_free(pname);
     }
+    pshadow->inner_data.method_type = SHADOW_DOWNSTREAM_METHOD_IGNORE;
 
     shadow_debug("End of method handle");
 }
@@ -105,11 +115,19 @@ static int iotx_shadow_subcribe_get(iotx_shadow_pt pshadow)
         }
     }
 
+#ifdef MQTT_AUTO_SUBSCRIBE
+    return IOT_MQTT_Subscribe(pshadow->mqtt,
+                              pshadow->inner_data.ptopic_get,
+                              IOTX_MQTT_QOS3_SUB_LOCAL,
+                              (iotx_mqtt_event_handle_func_fpt)iotx_shadow_callback_get,
+                              pshadow);
+#else
     return IOT_MQTT_Subscribe(pshadow->mqtt,
                               pshadow->inner_data.ptopic_get,
                               IOTX_MQTT_QOS1,
                               (iotx_mqtt_event_handle_func_fpt)iotx_shadow_callback_get,
                               pshadow);
+#endif
 }
 
 
@@ -133,7 +151,7 @@ iotx_err_t IOT_Shadow_PushFormat_Add(void *pshadow,
 
 iotx_err_t IOT_Shadow_PushFormat_Finalize(void *pshadow, format_data_pt pformat)
 {
-    return iotx_ds_common_format_finalize((iotx_shadow_pt)pshadow, pformat, "}}");
+    return iotx_ds_common_format_finalize((iotx_shadow_pt)pshadow, pformat, "}}", 0);
 }
 
 
@@ -197,7 +215,7 @@ static void iotx_update_ack_cb(
         shadow_debug("ack_msg is NULL");
     }
 
-    *((int *)pcontext) = ack_code;
+    //*((int *)pcontext) = ack_code;
 }
 
 
@@ -209,7 +227,8 @@ iotx_err_t IOT_Shadow_Push(
 {
     iotx_shadow_ack_code_t ack_update = IOTX_SHADOW_ACK_NONE;
     iotx_shadow_pt pshadow = (iotx_shadow_pt)handle;
-
+    int ret;
+    int cnt = 0;
     if ((NULL == pshadow) || (NULL == data)) {
         return NULL_VALUE_ERROR;
     }
@@ -220,11 +239,16 @@ iotx_err_t IOT_Shadow_Push(
     }
 
     /* update asynchronously */
-    IOT_Shadow_Push_Async(pshadow, data, data_len, timeout_s, iotx_update_ack_cb, &ack_update);
-
+    ret = IOT_Shadow_Push_Async(pshadow, data, data_len, timeout_s, iotx_update_ack_cb, &ack_update);
+    if(SUCCESS_RETURN != ret) {
+        return ret;
+    }
     /* wait ACK */
     while (IOTX_SHADOW_ACK_NONE == ack_update) {
         IOT_Shadow_Yield(pshadow, 200);
+        if(cnt ++ == 100) {
+            return ERROR_SHADOW_UPDATE_TIMEOUT;
+        }
     }
 
     if ((IOTX_SHADOW_ACK_SUCCESS == ack_update)
@@ -241,7 +265,7 @@ iotx_err_t IOT_Shadow_Push(
     }
 }
 
-
+#if 0
 iotx_err_t IOT_Shadow_Pull(void *handle)
 {
 #define SHADOW_SYNC_MSG_SIZE      (256)
@@ -253,7 +277,7 @@ iotx_err_t IOT_Shadow_Pull(void *handle)
 
     shadow_info("Device Shadow sync start.");
 
-    buf = LITE_malloc(SHADOW_SYNC_MSG_SIZE);
+    buf = SHADOW_malloc(SHADOW_SYNC_MSG_SIZE);
     if (NULL == buf) {
         shadow_err("Device Shadow sync failed");
         return ERROR_NO_MEM;
@@ -276,6 +300,47 @@ iotx_err_t IOT_Shadow_Pull(void *handle)
 
 #undef SHADOW_SYNC_MSG_SIZE
 }
+#else
+iotx_err_t IOT_Shadow_Pull(void *handle)
+{
+#define SHADOW_SYNC_MSG_SIZE      (256)
+
+    iotx_err_t ret;
+    void *buf;
+    format_data_t format;
+    iotx_shadow_pt pshadow = (iotx_shadow_pt)handle;
+    iotx_shadow_ack_code_t ack_update = IOTX_SHADOW_ACK_NONE;
+    uint16_t timeout_s = 1000;
+
+    shadow_info("Device Shadow sync start.");
+
+    buf = SHADOW_malloc(SHADOW_SYNC_MSG_SIZE);
+    if (NULL == buf) {
+        shadow_err("Device Shadow sync failed");
+        return ERROR_NO_MEM;
+    }
+
+    iotx_ds_common_format_init(pshadow, &format, buf, SHADOW_SYNC_MSG_SIZE, "get", NULL);
+    iotx_ds_common_format_finalize(pshadow, &format, NULL, 1);
+
+    //ret = IOT_Shadow_Push(pshadow, format.buf, format.offset, timeout_ms);
+        /* update asynchronously */
+    ret = IOT_Shadow_Push_Async(pshadow, format.buf, format.offset, timeout_s, iotx_update_ack_cb, &ack_update);
+
+    if (SUCCESS_RETURN == ret) {
+        shadow_info("Device Shadow sync success.");
+    } else {
+        shadow_info("Device Shadow sync failed.");
+    }
+
+    LITE_free(buf);
+    //HAL_SleepMs(1000);
+
+    return ret;
+
+#undef SHADOW_SYNC_MSG_SIZE
+}
+#endif
 
 
 void iotx_ds_event_handle(void *pcontext, void *pclient, iotx_mqtt_event_msg_pt msg)
@@ -327,7 +392,7 @@ void *IOT_Shadow_Construct(iotx_shadow_para_pt pparams)
     iotx_shadow_pt pshadow = NULL;
 
     /* initialize shadow */
-    if (NULL == (pshadow = LITE_malloc(sizeof(iotx_shadow_t)))) {
+    if (NULL == (pshadow = SHADOW_malloc(sizeof(iotx_shadow_t)))) {
         shadow_err("Not enough memory");
         return NULL;
     }
@@ -355,15 +420,15 @@ void *IOT_Shadow_Construct(iotx_shadow_para_pt pparams)
 
     pshadow->inner_data.sync_status = rc;
 
-    while (rc == pshadow->inner_data.sync_status) {
-        IOT_Shadow_Yield(pshadow, 100);
-    }
+    // while (rc == pshadow->inner_data.sync_status) {
+    //     IOT_Shadow_Yield(pshadow, 100);
+    // }
 
-    if (0 == pshadow->inner_data.sync_status) {
-        shadow_debug("Sync device data successfully");
-    } else {
-        shadow_debug("Sync device data failed");
-    }
+    // if (0 == pshadow->inner_data.sync_status) {
+    //     shadow_debug("Sync device data successfully");
+    // } else {
+    //     shadow_debug("Sync device data failed");
+    // }
 
 
     pshadow->inner_data.attr_list = list_new();
@@ -384,7 +449,7 @@ do_exit:
 void IOT_Shadow_Yield(void *handle, uint32_t timeout)
 {
     iotx_shadow_pt pshadow = (iotx_shadow_pt)handle;
-    IOT_MQTT_Yield(pshadow->mqtt, timeout);
+    //IOT_MQTT_Yield(pshadow->mqtt, timeout);
     iotx_ds_handle_expire(pshadow);
 }
 
@@ -393,14 +458,17 @@ iotx_err_t IOT_Shadow_Destroy(void *handle)
 {
     iotx_shadow_pt pshadow = (iotx_shadow_pt) handle;
 
+/* do not need to unsub as destroy mqtt will release these resource*/
+#if 0
     if (NULL != pshadow->mqtt) {
         if (NULL != pshadow->inner_data.ptopic_get) {
             IOT_MQTT_Unsubscribe(pshadow->mqtt, pshadow->inner_data.ptopic_get);
         }
 
-        HAL_SleepMs(2000);
-        IOT_MQTT_Destroy(&pshadow->mqtt);
+        //HAL_SleepMs(2000);
+        //IOT_MQTT_Destroy(&pshadow->mqtt);
     }
+#endif
 
     if (NULL != pshadow->inner_data.ptopic_get) {
         LITE_free(pshadow->inner_data.ptopic_get);
@@ -435,6 +503,8 @@ iotx_err_t IOT_Shadow_RegisterAttribute(void *handle, iotx_shadow_attr_pt pattr)
         return FAIL_RETURN;
     }
 
+    shadow_info("Device Shadow registered pattr_name \"%s\".", pattr->pattr_name);
+
     return SUCCESS_RETURN;
 }
 
@@ -453,14 +523,14 @@ iotx_err_t IOT_Shadow_DeleteAttribute(void *handle, iotx_shadow_attr_pt pattr)
         return ERROR_SHADOW_ATTR_NO_EXIST;
     }
 
-    buf = LITE_malloc(SHADOW_DELETE_MSG_SIZE);
+    buf = SHADOW_malloc(SHADOW_DELETE_MSG_SIZE);
     if (NULL == buf) {
         return ERROR_NO_MEM;
     }
 
     iotx_ds_common_format_init(pshadow, &format, buf, SHADOW_DELETE_MSG_SIZE, "delete", ",\"state\":{\"reported\":{");
     iotx_ds_common_format_add(pshadow, &format, pattr->pattr_name, NULL, IOTX_SHADOW_NULL);
-    iotx_ds_common_format_finalize(pshadow, &format, "}}");
+    iotx_ds_common_format_finalize(pshadow, &format, "}}", 0);
 
     ret = IOT_Shadow_Push(pshadow, format.buf, format.offset, 10);
     if (SUCCESS_RETURN != ret) {

@@ -30,15 +30,6 @@ extern "C" {
 #define OS_DEVICE_NAME_LEN      DEVICE_NAME_LEN
 #define OS_DEVICE_SECRET_LEN    DEVICE_SECRET_LEN
 
-#if 0
-#ifndef in_range
-#define in_range(c, lo, up)     ((uint8_t)(c) >= (lo) && (uint8_t)(c) <= (up))
-#define isdigit(c)              in_range(c, '0', '9')
-#define isxdigit(c)             (isdigit(c) || in_range(c, 'a', 'f') || in_range(c, 'A', 'F'))
-#define islower(c)              in_range(c, 'a', 'z')
-#define isspace(c)              ((c) == ' ' || (c) == '\f' || (c) == '\n' || (c) == '\r' || (c) == '\t' || (c) == '\v')
-#endif
-#endif
 /***************************************** Misc Interface *****************************************/
 
 /** @defgroup group_misc misc
@@ -574,6 +565,7 @@ static inline int os_get_conn_link_stat(int *p_rssi, int *p_channel)
  * @note this func will format mac address string uppercase
  */
 char *os_wifi_get_mac_str(char mac_str[OS_MAC_LEN]);
+
 char *os_wifi_str2mac(char mac_str[OS_MAC_LEN], char mac[OS_ETH_ALEN]);
 
 /**

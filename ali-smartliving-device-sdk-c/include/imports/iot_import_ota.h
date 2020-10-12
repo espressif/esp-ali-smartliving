@@ -77,6 +77,5 @@ DLL_HAL_API int HAL_Firmware_Check_Rsa_Key(_IN_ char *buffer, _IN_ uint32_t leng
  * @note None.
  */
 DLL_HAL_API void HAL_Firmware_Need_Check_Security_Ota(uint8_t flag);
-
 #endif  /* __IOT_IMPORT_UOTA_H__ */
 

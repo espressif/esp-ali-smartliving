@@ -13,6 +13,19 @@ extern "C" {
 #define _IN_OPT_
 #endif
 
+#ifndef DLL_HAL_API
+#define DLL_HAL_API
+#endif
+
+#ifndef _IN_
+#define _IN_
+#endif
+
+#ifndef _OU_
+#define _OU_
+#endif
+
+
 #define STR_SHORT_LEN                   (32)
 #ifndef ETH_ALEN
 #define ETH_ALEN                        (6)
@@ -251,7 +264,7 @@ typedef void (*awss_wifi_mgmt_frame_cb_t)(_IN_ uint8_t *buffer, _IN_ int len,
         _IN_ signed char rssi_dbm, _IN_ int buffer_type);
 
 /**
- * @brief   在站点(Station)模式下使能或禁用对管理帧的过滤
+ * @brief   使能或禁用对管理帧的过滤
  *
  * @param[in] filter_mask @n see mask macro in enum HAL_Awss_frame_type,
  *                      currently only FRAME_PROBE_REQ_MASK & FRAME_BEACON_MASK is used

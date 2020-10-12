@@ -14,6 +14,7 @@ extern "C" {
 #ifdef DEV_ERRCODE_ENABLE
 extern void dev_errcode_module_init(void);
 extern int dev_errcode_handle(const int state_code, const char *state_message);
+extern uint16_t dev_errcode_sdk_filter(const int state_code);
 #endif
 
 #if defined(__cplusplus)

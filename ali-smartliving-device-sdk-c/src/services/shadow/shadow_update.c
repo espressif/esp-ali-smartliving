@@ -99,6 +99,37 @@ void iotx_ds_update_wait_ack_list_handle_expire(iotx_shadow_pt pshadow)
     HAL_MutexUnlock(pshadow->mutex);
 }
 
+void iotx_shadow_do_callback(iotx_shadow_pt pshadow)
+{
+    const char *pvalue;
+    iotx_shadow_attr_pt pattr;
+    list_iterator_t *iter;
+    list_node_t *node;
+
+    HAL_MutexLock(pshadow->mutex);
+    iter = list_iterator_new(pshadow->inner_data.attr_list, LIST_TAIL);
+    if (NULL == iter) {
+        HAL_MutexUnlock(pshadow->mutex);
+        shadow_warning("Allocate memory failed");
+        return ;
+    }
+
+    while (node = list_iterator_next(iter), NULL != node) {
+        pattr = (iotx_shadow_attr_pt)node->val;
+        if((pattr != NULL) && (pattr->flag_update == 1) && (NULL != pattr->callback)){
+
+            //HAL_MutexUnlock(pshadow->mutex);
+            /* call related callback function */
+            pattr->callback(pattr);
+            //HAL_MutexLock(pshadow->mutex);
+            pattr->method_type = SHADOW_DOWNSTREAM_METHOD_IGNORE;
+            pattr->flag_update = 0;
+        }
+    }
+
+    list_iterator_destroy(iter);
+    HAL_MutexUnlock(pshadow->mutex);
+}
 
 /* handle response ACK of UPDATE */
 void iotx_ds_update_wait_ack_list_handle_response(
@@ -144,6 +175,8 @@ void iotx_ds_update_wait_ack_list_handle_response(
 
                     if (0 == strncmp(pdata, "success", strlen(pdata))) {
                         char    *temp = NULL;
+                        
+                        LITE_free(pdata);
 
                         /* If have 'state' keyword in @json_shadow.payload, attribute value should be updated. */
                         temp = LITE_json_value_of("state", (char *)ppayload);
@@ -178,7 +211,6 @@ void iotx_ds_update_wait_ack_list_handle_response(
                         LITE_free(pdata);
                     }
 
-                    LITE_free(pdata);
                     LITE_free(ppayload);
                 } while (0);
 
@@ -194,4 +226,7 @@ void iotx_ds_update_wait_ack_list_handle_response(
     LITE_free(ppayload);
     HAL_MutexUnlock(pshadow->mutex);
     shadow_warning("Not match any wait element in list.");
+
+    //call user callback after desire update to cloud.
+    iotx_shadow_do_callback(pshadow);
 }

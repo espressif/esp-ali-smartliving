@@ -46,9 +46,9 @@ const struct awss_cmp_couple awss_online_couple[] = {
     {-1, TOPIC_MATCH_REPORT_REPLY, awss_report_token_reply},
 #ifdef WIFI_PROVISION_ENABLED
 #ifndef AWSS_DISABLE_REGISTRAR
-    {-1, TOPIC_ZC_CHECKIN,         awss_enrollee_checkin},
-    {-1, TOPIC_ZC_ENROLLEE_REPLY,  awss_report_enrollee_reply},
-    {-1, TOPIC_ZC_CIPHER_REPLY,    awss_get_cipher_reply},
+    {-1, TOPIC_ZC_CHECKIN,         awss_registrar_cloud_checkin},
+    {-1, TOPIC_ZC_ENROLLEE_REPLY,  awss_registrar_enr_found_reply},
+    {-1, TOPIC_ZC_CIPHER_REPLY,    awss_registrar_enr_cipher_reply},
 #endif
     {-1, TOPIC_SWITCHAP,           awss_online_switchap}
 #endif
@@ -114,7 +114,7 @@ int awss_cmp_mqtt_get_payload(void *mesg, char **payload, uint32_t *playload_len
             *payload = (char *)ptopic_info->payload;
             break;
         default:
-            dump_dev_bind_status(STATE_BIND_MQTT_MSG_INVALID, NULL);
+            dump_dev_bind_status(STATE_BIND_MQTT_MSG_INVALID, "mqtt msg type:%d err", msg->event_type);
             return STATE_BIND_MQTT_MSG_INVALID;
     }
     return 0;

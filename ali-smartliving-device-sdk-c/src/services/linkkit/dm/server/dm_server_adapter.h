@@ -4,7 +4,7 @@
 #ifdef ALCS_ENABLED
 
 #define DM_SERVER_ALCS_ADDR          "224.0.1.187"
-#define DM_SERVER_ALCS_PORT          (5863)
+#define DM_SERVER_ALCS_PORT          (5683)
 #define DM_SERVER_ALCS_SEND_MAXCOUNT (16)
 #define DM_SERVER_ALCS_WAITTIME      (50)
 #define DM_SERVER_ALCS_OBS_MAXCOUNT  (16)
@@ -28,6 +28,10 @@ int dm_server_send(char *uri, unsigned char *payload, int payload_len, void *con
 int dm_server_subscribe(char *uri, CoAPRecvMsgHandler callback, int auth_type);
 int dm_server_add_device(char product_key[PRODUCT_KEY_MAXLEN], char device_name[DEVICE_NAME_MAXLEN]);
 int dm_server_del_device(char product_key[PRODUCT_KEY_MAXLEN], char device_name[DEVICE_NAME_MAXLEN]);
+#ifdef DEVICE_MODEL_GATEWAY
+int dm_server_unsubscribe_all(char product_key[PRODUCT_KEY_MAXLEN], char device_name[DEVICE_NAME_MAXLEN]);
+int dm_server_unsubscribe(const char *uri);
+#endif
 int dm_server_yield(void);
 
 #endif

@@ -17,11 +17,11 @@ menu "AWSS Configurations"
 
     config AWSS_SUPPORT_PHONEASAP
     bool "FEATURE_AWSS_SUPPORT_PHONEASAP"
-    default y
+    default n
 
     config AWSS_SUPPORT_ROUTER
     bool "FEATURE_AWSS_SUPPORT_ROUTER"
-    default y
+    default n
 
     config AWSS_SUPPORT_ZEROCONFIG
     bool "FEATURE_AWSS_SUPPORT_ZEROCONFIG"

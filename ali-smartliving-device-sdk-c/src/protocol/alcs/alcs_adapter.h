@@ -56,6 +56,7 @@ typedef struct iotx_alcs_adapter_st {
     uint16_t local_port;
 } iotx_alcs_adapter_t, *iotx_alcs_adapter_pt;
 
+iotx_alcs_adapter_t *iotx_alcs_get_ctx(void);
 int iotx_alcs_subdev_insert(iotx_alcs_subdev_item_t *item);
 int iotx_alcs_subdev_remove(const char *pk, const char *dn);
 int iotx_alcs_subdev_search(const char *pk, const char *dn, iotx_alcs_subdev_item_t **item);

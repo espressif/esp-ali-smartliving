@@ -28,7 +28,10 @@
 #endif
 
 #ifndef WITH_MQTT_DYN_CONNINFO
-    #define WITH_MQTT_DYN_CONNINFO              (0)
+    #define WITH_MQTT_DYN_CONNINFO              (1)
+#endif
+#ifndef WITH_MQTT_MULTI_INSTANCE
+    #define WITH_MQTT_MULTI_INSTANCE            (0)
 #endif
 
 #ifndef WITH_MQTT_SUB_LOCAL
@@ -54,22 +57,22 @@
 #define IOTX_MC_RECONNECT_INTERVAL_MIN_MS       (1000)
 
 /* Maximum interval of MQTT reconnect in millisecond */
-#define IOTX_MC_RECONNECT_INTERVAL_MAX_MS       (3000)
+#define IOTX_MC_RECONNECT_INTERVAL_MAX_MS       (32000)
 
 /* Minimum timeout interval of MQTT request in millisecond */
 #define IOTX_MC_REQUEST_TIMEOUT_MIN_MS          (500)
 
 /* Maximum timeout interval of MQTT request in millisecond */
-#define IOTX_MC_REQUEST_TIMEOUT_MAX_MS          (5000)
+#define IOTX_MC_REQUEST_TIMEOUT_MAX_MS          (10000)
 
 /* Default timeout interval of MQTT request in millisecond */
-#define IOTX_MC_REQUEST_TIMEOUT_DEFAULT_MS      (2000)
+#define IOTX_MC_REQUEST_TIMEOUT_DEFAULT_MS      (6000)
 
 /* Max times of keepalive which has been send and did not received response package */
 #ifndef LINK_VISUAL_ENABLE
 #define IOTX_MC_KEEPALIVE_PROBE_MAX             (2)
 #else
-#define IOTX_MC_KEEPALIVE_PROBE_MAX             (1)
+#define IOTX_MC_KEEPALIVE_PROBE_MAX             (3)
 #endif
 
 #endif  /* IOTX_MQTT_CONFIG_H__ */

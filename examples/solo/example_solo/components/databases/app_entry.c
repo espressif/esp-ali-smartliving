@@ -41,8 +41,7 @@ static const char *TAG = "app_entry";
 #define AWSS_CONFIG_NAME  "linkkey"
 #define AWSS_REBOOT_NAME  "reboot"
 #define AWSS_KV_ERASE_DY_SECRET_NAME  "kv_clear"
-#define KV_KEY_DEVICE_SECRET            "DRDevSecret"
-#define AWSS_KV_RST       "awss.rst"
+#define KV_KEY_DEVICE_SECRET            "DyncRegDeviceSecret"
 static bool s_conn_mgr_exist = false;
 
 int app_check_config_pk(void)
@@ -148,14 +147,11 @@ void app_get_input_param(char *param, size_t param_len)
         }
         conn_mgr_set_sc_mode(CONN_SOFTAP_MODE);
     } else if (strstr(param, AWSS_RESET_NAME)) {
-        char rst = 0;
-        int len = 1;
         conn_mgr_reset_wifi_config();
-        HAL_Kv_Get(AWSS_KV_RST_FLAG, &rst, &len);
-        if (!rst) {
+        if (!awss_check_reset(NULL)) {
             ESP_LOGI(TAG, "Reset and unbind device");
-            rst = 1;
-            awss_report_reset();
+            int type = IOTX_VENDOR_DEV_RESET_TYPE_UNBIND_SHADOW_CLEAR;
+            awss_report_reset(&type);
             vTaskDelay(2000 / portTICK_RATE_MS);
         }
         esp_restart();

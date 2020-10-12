@@ -8,15 +8,17 @@
 #include "os.h"
 
 #ifndef ETH_ALEN
-    #define ETH_ALEN            (6)
+#define ETH_ALEN            (6)
 #endif
 
 #define ZC_MAX_SSID_LEN     (32 + 1)/* ssid: 32 octets at most, include the NULL-terminated */
 #define ZC_MAX_PASSWD_LEN   (64 + 1)/* 8-63 ascii */
 #define MAX_APLIST_NUM      (100)
 #define ZC_MAX_TOKEN_LEN    (16)
+
 #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
-extern "C" {
+extern "C"
+{
 #endif
 
 enum _ZC_AUTH_TYPE_ {
@@ -48,9 +50,7 @@ enum _ZC_PKG_TYPE_ {
     PKG_DATA_FRAME,    // data frame, --数据包，锁定信道后长时间T2收不到数据包，需重新进入扫描阶段
     PKG_ALINK_ROUTER,  // alink router
     PKG_GROUP_FRAME,   // group frame
-#ifdef AWSS_SUPPORT_SMARTCONFIG_MCAST
-    PKG_MCAST_FRAME,   /* mcast frame */
-#endif
+    PKG_MCAST_FRAME,   /* group frame */
     PKG_END            // --配网结束事件，已拿到ssid和passwd，通过回调函数去获取ssid和passwd
     /*
      * 参考值：
@@ -83,9 +83,12 @@ int zconfig_recv_callback(void *pkt_data, uint32_t pkt_length, uint8_t channel,
  * save apinfo
  * 0 -- success, otherwise, failed.
  */
-int zconfig_set_apinfo(uint8_t *ssid, uint8_t *bssid, uint8_t channel, uint8_t auth,
+int zconfig_set_apinfo(uint8_t *ssid, uint8_t* bssid, uint8_t channel, uint8_t auth,
                        uint8_t pairwise_cipher, uint8_t group_cipher, signed char rssi);
 
+/* helper function, auth/encry type to string */
+const char *zconfig_auth_str(uint8_t auth);
+const char *zconfig_encry_str(uint8_t encry);
 uint8_t zconfig_get_lock_chn(void);
 
 /* add channel to global scanning channel list */
@@ -95,7 +98,8 @@ void zconfig_channel_locked_callback(uint8_t primary_channel,
                                      uint8_t secondary_channel, uint8_t *bssid);
 /* got ssid&passwd callback */
 void zconfig_got_ssid_passwd_callback(uint8_t *ssid, uint8_t *passwd,
-                                      uint8_t *bssid, uint8_t *token, uint8_t auth, uint8_t encry, uint8_t channel);
+                                      uint8_t *bssid, uint8_t *token, 
+                                      uint8_t auth, uint8_t encry, uint8_t channel, uint8_t token_type); 
 void zconfig_force_rescan(void);
 void aws_set_dst_chan(int channel);
 void aws_switch_channel(void);

@@ -12,6 +12,7 @@
 #include "awss_utils.h"
 #include "awss_cmp.h"
 #include "awss_log.h"
+#include "awss_reset.h"
 #include "platform.h"
 #include "passwd.h"
 #include "os.h"
@@ -222,9 +223,9 @@ int awss_notify_dev_info(int type, int count)
         awss_build_dev_info(type, dev_info, DEV_INFO_LEN_MAX);
 
         snprintf(buf, DEV_INFO_LEN_MAX - 1, AWSS_DEV_NOTIFY_FMT, ++ g_notify_id, method, dev_info);
-        utils_hex_to_str(aes_random, RANDOM_MAX_LEN, rand_str, sizeof(rand_str));
+        utils_hex_to_str(g_aes_random, RANDOM_MAX_LEN, rand_str, sizeof(rand_str));
         if (type == AWSS_NOTIFY_SUCCESS) {
-            dump_awss_status(STATE_WIFI_SENT_CONNECTAP_NOTIFY, NULL);
+            dump_awss_status(STATE_WIFI_SENT_CONNECTAP_NOTIFY, "connect ap notify");
         } else if (type == AWSS_NOTIFY_DEV_RAND_SIGN) {
 
         }
@@ -309,7 +310,7 @@ static int awss_process_get_devinfo()
         snprintf(buf, DEV_INFO_LEN_MAX - 1, AWSS_ACK_FMT, req_msg_id, 200, dev_info);
         os_free(dev_info);
 
-        utils_hex_to_str(aes_random, RANDOM_MAX_LEN, rand_str, sizeof(rand_str));
+        utils_hex_to_str(g_aes_random, RANDOM_MAX_LEN, rand_str, sizeof(rand_str));
         dump_dev_bind_status(STATE_BIND_SENT_TOKEN_RESP, dev_info);
         awss_info("sending message to app: %s", buf);
         char topic[TOPIC_LEN_MAX] = { 0 };
@@ -337,7 +338,7 @@ static int awss_process_get_devinfo()
     return 0;
 
 GET_DEV_INFO_ERR:
-    dump_dev_bind_status(STATE_BIND_APP_GET_TOKEN_RESP_FAIL, NULL);
+    dump_dev_bind_status(STATE_BIND_APP_GET_TOKEN_RESP_FAIL, "get token response fail");
     awss_release_coap_ctx(coap_session_ctx);
     coap_session_ctx = NULL;
     awss_stop_timer(get_devinfo_timer);
@@ -360,11 +361,10 @@ static int online_get_device_info(void *ctx, void *resource, void *remote,
     /*
      * if cloud is not ready, don't response token
      */
-    dump_dev_bind_status(STATE_BIND_RECV_TOKEN_QUERY, NULL);
+    dump_dev_bind_status(STATE_BIND_RECV_TOKEN_QUERY, "recv token query");
 #ifdef DEVICE_MODEL_ENABLED
-    extern int awss_check_reset();
-    if (awss_check_reset()) {
-        dump_dev_bind_status(STATE_BIND_RST_IN_PROGRESS, NULL);
+    if (awss_check_reset(NULL)) {
+        dump_dev_bind_status(STATE_BIND_RST_IN_PROGRESS, "need do reset");
         return STATE_BIND_RST_IN_PROGRESS;
     }
 #endif
@@ -386,7 +386,7 @@ static int online_get_device_info(void *ctx, void *resource, void *remote,
 
     timeout = awss_token_timeout();
     if (timeout) {
-        produce_random(aes_random, sizeof(aes_random));
+        produce_random(g_aes_random, sizeof(g_aes_random));
         awss_report_token();
     }
 
@@ -443,11 +443,11 @@ static int __awss_dev_bind_notify()
             break;
 
         for (i = 0; i < RANDOM_MAX_LEN; i ++)
-            if (aes_random[i] != 0x00)
+            if (g_aes_random[i] != 0x00)
                 break;
 
         if (i >= RANDOM_MAX_LEN)
-            produce_random(aes_random, sizeof(aes_random));
+            produce_random(g_aes_random, sizeof(g_aes_random));
 
         if (awss_token_timeout() == 0) {
             awss_notify_dev_info(AWSS_NOTIFY_DEV_BIND_TOKEN, 1);

@@ -27,6 +27,13 @@ extern "C" {
  *  @{
  */
 
+#define PLATFORM_SOCKET_MAXNUMS         (10)
+#define PLATFORM_WAIT_INFINITE          (~0)
+#define PLATFORM_INVALID_FD             ((void *)-1)
+
+#define STR_LONG_LEN                    (128)
+
+
 /* ssid: 32 octets at most, include the NULL-terminated */
 #define PLATFORM_MAX_SSID_LEN           (HAL_MAX_SSID_LEN)
 /* password: 8-63 ascii */

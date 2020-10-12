@@ -14,6 +14,8 @@ COMP_LIB_COMPONENTS := \
     src/infra/system \
     src/sdk-impl \
     src/services/dev_diagnosis \
+    components/timer_service \
+    components/tick_notify
 
 $(call CompLib_Map, FEATURE_MQTT_COMM_ENABLED,  src/protocol/mqtt)
 $(call CompLib_Map, FEATURE_OTA_ENABLED,        src/services/ota)
@@ -56,7 +58,7 @@ $(call CompLib_Map, FEATURE_SAL_ENABLED, \
 $(call Conflict_Relation, FEATURE_SUPPORT_TLS, FEATURE_SUPPORT_ITLS)
 $(call Conflict_Relation, FEATURE_MAL_ENABLED, FEATURE_MQTT_COMM_ENABLED)
 $(call Conflict_Relation, FEATURE_MAL_ENABLED, FEATURE_SAL_ENABLED)
-$(call Conflict_Relation, FEATURE_DEVICE_MODEL_RAWDATA_SOLO)
+
 $(call Conflict_Relation, FEATURE_DEVICE_MODEL_RAWDATA_SOLO, FEATURE_DEVICE_MODEL_GATEWAY)
 
 # 'Opt1 = n' and 'Opt2 = n' conflicts with each other

@@ -5,6 +5,16 @@
 #include <stdlib.h>
 #include "os.h"
 
+#if 0
+#ifndef in_range
+#define in_range(c, lo, up)  ((uint8_t)c >= lo && (uint8_t)c <= up)
+#define isdigit(c)           in_range(c, '0', '9')
+#define isxdigit(c)          (isdigit(c) || in_range(c, 'a', 'f') || in_range(c, 'A', 'F'))
+#define islower(c)           in_range(c, 'a', 'z')
+#define isspace(c)           (c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v')
+#endif
+#endif
+
 /****** Convert values between host and big-/little-endian byte order ******/
 
 //reverse byte order
@@ -147,6 +157,27 @@ uint64_t os_le64toh(uint64_t data)
     return os_htole64(data);
 }
 
+//get unaligned data in big endian.
+uint16_t os_get_unaligned_be16(uint8_t * ptr)
+{
+    uint16_t res;
+
+    memcpy(&res, ptr, sizeof(uint16_t));
+
+    return os_be16toh(res);
+}
+
+//get unaligned data in little endian.
+uint16_t os_get_unaligned_le16(uint8_t * ptr)
+{
+    uint16_t res;
+
+    memcpy(&res, ptr, sizeof(uint16_t));
+
+    return os_le16toh(res);
+
+}
+
 uint32_t os_get_unaligned_be32(uint8_t * ptr)
 {
     uint32_t res;
@@ -231,8 +262,8 @@ char *os_wifi_get_mac_str(char mac_str[OS_MAC_LEN])
     while (str) {
         str = strchr(str, ':');
         if (str) {
-            colon_num ++;
-            str ++; /* eating char ':' */
+            colon_num++;
+            str++; /* eating char ':' */
         }
     }
 
@@ -245,7 +276,6 @@ char *os_wifi_get_mac_str(char mac_str[OS_MAC_LEN])
 
     return mac_str;
 }
-
 char *os_wifi_str2mac(char mac_str[OS_MAC_LEN], char mac[OS_ETH_ALEN])
 {
     int i = 0;

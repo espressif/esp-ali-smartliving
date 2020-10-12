@@ -63,11 +63,11 @@ extern "C"
 		char *valuestring;
 		/* writing to valueint is DEPRECATED, use cJSON_SetNumberValue instead */
 		int valueint;
+		/* The item's number, if type==cJSON_Number */
+		double valuedouble;
 
 		/* The item's name string, if this item is the child of, or is in the list of subitems of an object. */
 		char *string;
-                /* The item's number, if type==cJSON_Number */
-                double valuedouble;
 	} cJSON;
 
 	typedef int cJSON_bool;

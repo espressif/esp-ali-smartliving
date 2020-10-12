@@ -65,6 +65,8 @@ int HAL_Kv_Del(const char *key)
     nvs_handle handle;
     esp_err_t ret;
 
+    char key_name[16] = {0};
+
     if (key == NULL) {
         ESP_LOGE(TAG, "HAL_Kv_Del Null key");
         return ESP_FAIL;
@@ -81,10 +83,13 @@ int HAL_Kv_Del(const char *key)
         return ESP_FAIL;
     }
 
-    ret = nvs_erase_key(handle, key);
+    /*max key name is 15UL*/
+    memcpy(key_name, key, sizeof(key_name) - 1);
+
+    ret = nvs_erase_key(handle, key_name);
 
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "nvs erase key %s failed with %x", key, ret);
+        ESP_LOGE(TAG, "nvs erase key %s failed with %x", key_name, ret);
     } else {
         nvs_commit(handle);
     }

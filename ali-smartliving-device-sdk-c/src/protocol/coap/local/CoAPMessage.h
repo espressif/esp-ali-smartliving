@@ -7,11 +7,14 @@
 #ifndef __COAP_MESSAGE_H__
 #define __COAP_MESSAGE_H__
 #include "CoAPExport.h"
+#include "lite-list.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
+#define DUP_CHECKSUM_LEN 4
+#define DUP_CHECKSUM_COUNT 15
 
 typedef struct
 {
@@ -28,8 +31,17 @@ typedef struct
     unsigned char           *message;
     int                      acked;
     int                      keep;
+    unsigned short           no_response;
 } CoAPSendNode;
 
+typedef struct
+{
+    int write_index;
+    uint64_t last_tick;
+    char checksum_list [DUP_CHECKSUM_LEN * DUP_CHECKSUM_COUNT];
+} CoAPPreventDuplicate;
+
+int CoAPMessageCheckDup(CoAPMessage *message, CoAPPreventDuplicate* preventDup);
 
 int CoAPStrOption_add(CoAPMessage *message, unsigned short optnum,
                       unsigned char *data, unsigned short datalen);

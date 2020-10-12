@@ -14,6 +14,7 @@ CFLAGS  += -Iexamples -Iexamples/linkkit -Itests
 CFLAGS  += -DFORCE_SSL_VERIFY
 CFLAGS  += -DCOAP_SERV_MULTITHREAD
 CFLAGS  += -DDEV_STATEMACHINE_ENABLE
+CFLAGS  += -Wno-unused
 
 #
 # Hacks for cmake sub-system

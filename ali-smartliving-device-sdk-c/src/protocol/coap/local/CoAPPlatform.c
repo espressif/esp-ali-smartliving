@@ -4,6 +4,21 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include "CoAPPlatform.h"
+
+#ifdef TEST_COAP_MEMORY
+void* mymalloc(int size, char* file, int line)
+{
+    void* p = LITE_malloc(size, MEM_MAGIC, "coap.local");
+    COAP_ERR("COAP_HEAP, MALLOC:%s:%d, size=%d, ptr=%p", file, line, size, p);
+    return p;
+}
+void myfree(void* ptr, char* file, int line)
+{
+    COAP_ERR("COAP_HEAP, Free:%s:%d, %p", file, line, ptr);
+    LITE_free(ptr);
+}
+#endif
 
 unsigned int platform_aton(const char *ip_str)
 {

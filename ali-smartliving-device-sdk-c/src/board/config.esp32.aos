@@ -22,3 +22,4 @@ CONFIG_tests                    :=
 CONFIG_src/tools/linkkit_tsl_convert :=
 
 CROSS_PREFIX        := xtensa-esp32-elf-
+

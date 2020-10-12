@@ -37,8 +37,8 @@ void *ofc_Init(char *url)
     memset(h_odc, 0, sizeof(otahttp_Struct_t));
 
     /* set http request-header parameter */
-    h_odc->http.header = "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n" \
-                         "Accept-Encoding: gzip, deflate\r\n";
+    h_odc->http.header = "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n";
+
 #if defined(SUPPORT_ITLS)
     char *s_ptr = strstr(url, "://");
     if (strlen("https") == (s_ptr - url) && (0 == strncmp(url, "https", strlen("https")))) {
@@ -99,7 +99,6 @@ int32_t ofc_Fetch(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s)
     //not use ssl for local http transfer
     if((port != 80)&&(port != 443)) {
         ca =NULL;
-        h_odc->http.net.product_key = NULL;
     }
 #ifdef SUPPORT_HTTP_OTA
     if (0 != httpclient_common(&h_odc->http, h_odc->url, 80,NULL, HTTPCLIENT_GET, timeout_s * 1000,

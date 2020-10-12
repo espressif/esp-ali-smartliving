@@ -11,16 +11,23 @@ config DEVICE_MODEL_ENABLED
 menu "Device Model Configurations"
     depends on DEVICE_MODEL_ENABLED
 
+    config DM_UNIFIED_SERVICE_POST
+        bool "FEATURE_DM_UNIFIED_SERVICE_POST"
+        default y
+        help
+            Switching Thing-Model support topic _thing/service/post
+
     config DEVICE_MODEL_GATEWAY
         bool "FEATURE_DEVICE_MODEL_GATEWAY"
+        depends on (DM_UNIFIED_SERVICE_POST)
         default n
         help
             Switching Thing-Model related implementations provided in gateway oriented way
 
     config ALCS_ENABLED
         bool "FEATURE_ALCS_ENABLED"
-        depends on (DEVICE_MODEL_ENABLED && WIFI_PROVISION_ENABLED)
-        default y
+        depends on (DEVICE_MODEL_ENABLED)
+        default n
         help
             ALCS(Alibaba Local Communication Service) enable customers communicate with IoT devices from cellphone without Internet
 
@@ -35,6 +42,13 @@ menu "Device Model Configurations"
         help
             Enable customers to bind device to current user
 
+    config CLOUD_OFFLINE_RESET
+        bool "FEATURE_CLOUD_OFFLINE_RESET"
+        depends on MQTT_SHADOW
+        default n
+        help
+            Enable cloud offline reset method support.
+
     config DEVICE_MODEL_RAWDATA_SOLO
         bool "FEATURE_DEVICE_MODEL_RAWDATA_SOLO"
         depends on DEVICE_MODEL_ENABLED && !DEVICE_MODEL_GATEWAY
@@ -45,4 +59,3 @@ menu "Device Model Configurations"
             Switching to "y" leads to SDK being compiled only raw data function
             Switching to "n" leads to SDK being compiled both raw data and thing model function
 endmenu
-

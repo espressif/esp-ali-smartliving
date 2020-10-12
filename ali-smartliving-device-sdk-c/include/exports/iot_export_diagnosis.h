@@ -418,6 +418,14 @@ extern "C" {
 /* WiFi Provision: 0x0400 ~ 0x04FF */
 /* device send connect ap notify reach max count(timeout, send fail or recv no resp) */
 #define STATE_WIFI_SENT_CONNECTAP_NOTI_TIMEOUT      (STATE_WIFI_BASE - 0x0060)
+/* device can not find the AP to connect */
+#define STATE_WIFI_AP_DISCOVER_FAIL                 (STATE_WIFI_BASE - 0x0061)
+/* device find the AP rssi too low to connect */
+#define STATE_WIFI_AP_RSSI_TOO_LOW                  (STATE_WIFI_BASE - 0x0062)
+/* device connect the AP auth fail */
+#define STATE_WIFI_AP_CONN_AUTH_FAIL                (STATE_WIFI_BASE - 0x0063)
+/* device connect the AP IP Address get fail */
+#define STATE_WIFI_AP_CONN_IP_GET_FAIL              (STATE_WIFI_BASE - 0x0064)
 
 /* COAP: 0x0500 ~ 0x05FF */
 #define STATE_COAP_BASE                             (-0x0500)
@@ -781,9 +789,14 @@ extern "C" {
 // Device errcode global definitions
 #define DEV_ERRCODE_VERSION                 1
 #define DEV_ERRCODE_MSG_MAX_LEN             (64)
-#define DEV_ERRCODE_TOPIC_RSP_MAX_LEN       (128)
-#define DEV_ERRCODE_TOPIC_RSP_FMT           "\"codeVer\":\"%d\",\"state\":%d,\"code\":%d,\"errMsg\":\"%s\""
-
+#define DEV_ERRCODE_TOPIC_RSP_MAX_LEN       (256)
+#define DEV_ERRCODE_TOPIC_RSP_FMT           "\"codeVer\":\"%d\",\"state\":%d,\"code\":%d,\"errMsg\":\"%s\",\"signSecretType\":%d,\"sign\":\"%s\""
+typedef enum
+{
+    DEV_ERRCODE_SIGN_TYPE_DS = 0,           // errcode sign type - device secret
+    DEV_ERRCODE_SIGN_TYPE_PS = 1,           // errcode sign type - product secret
+    DEV_ERRCODE_SIGN_INVALID
+} dev_errcode_sign_type_t;
 
 /****************** Device Offline OTA,used for device diagnosis *********************/
 #define DEV_OFFLINE_OTA_VERSION                 1
@@ -834,6 +847,7 @@ typedef enum
 } dev_awss_pattern_t;
 
 // Device err code definition
+#define DEV_ERRCODE_DEFAULT                 0x0000
 // DEV_STATE_INIT
 // DEV_STATE_WIFI_MONITOR
 #define DEV_ERRCODE_WIFI_DRV_FAIL           0xC400
@@ -911,8 +925,16 @@ typedef enum _log_level_e
 } log_level_e;
 
 DLL_IOT_API int diagnosis_offline_log_get(void *ctx, void *resource, void *remote, void *request);
+DLL_IOT_API int diagnosis_offline_log_finish(void *ctx, void *resource, void *remote, void *request);
 DLL_IOT_API int diagnosis_offline_log(log_level_e level, const char *fmt, ...);
 DLL_IOT_API int diagnosis_offline_log_save_all(void);
+DLL_IOT_API int diagnosis_offline_log_erase_flash_desc(void);
+DLL_IOT_API int diagnosis_offline_log_deinit(void);
+DLL_IOT_API int diagnosis_offline_log_state_code_handle(const int state_code, const char *state_message);
+#endif
+
+#ifdef DEV_ERRCODE_ENABLE
+DLL_IOT_API int diagnosis_finish(void *ctx, void *resource, void *remote, void *request);
 #endif
 
 #ifdef DEV_STATEMACHINE_ENABLE

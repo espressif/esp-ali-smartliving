@@ -13,7 +13,7 @@ $(NAME)_SOURCES :=
 $(NAME)_SOURCES += awss.c       awss_aha.c      awss_registrar.c     zconfig_protocol.c       awss_smartconfig.c
 $(NAME)_SOURCES += awss_main.c  awss_wifimgr.c  zconfig_utils.c      zconfig_vendor_common.c  awss_aplist.c
 $(NAME)_SOURCES += awss_crypt.c awss_enrollee.c zconfig_ieee80211.c  awss_adha.c              awss_wps.c
-$(NAME)_SOURCES += awss_ht40.c  awss_info.c     awss_statis.c        awss_dev_ap.c            awss_security.c
+$(NAME)_SOURCES += awss_ht40.c  awss_info.c     awss_statis.c        awss_dev_ap.c
 
 ifeq ($(CONFIG_SYSINFO_DEVICE_NAME), ESP8266)
 GLOBAL_DEFINES += ESP8266_CONFIG
@@ -99,6 +99,9 @@ GLOBAL_DEFINES += AWSS_SUPPORT_APLIST
 #
 # ESP8266 and MK3165 don't support registrar, so we define AWSS_DISABLE_REGISTRAR defaultly.
 #
+#ifeq ($(CONFIG_SYSINFO_DEVICE_NAME), ESP8266)
+#GLOBAL_DEFINES += AWSS_DISABLE_REGISTRAR
+#endif
 
 ifeq ($(CONFIG_SYSINFO_DEVICE_NAME), MK3165)
 GLOBAL_DEFINES += AWSS_DISABLE_REGISTRAR

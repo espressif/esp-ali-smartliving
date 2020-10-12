@@ -20,7 +20,8 @@
 #include "iot_export.h"
 
 #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
-extern "C" {
+extern "C"
+{
 #endif
 
 char awss_finished = 2;
@@ -32,19 +33,21 @@ int __awss_start(void)
     enum AWSS_AUTH_TYPE auth = AWSS_AUTH_TYPE_INVALID;
     enum AWSS_ENC_TYPE encry = AWSS_ENC_TYPE_INVALID;
     uint8_t token[ZC_MAX_TOKEN_LEN] = {0};
+    uint8_t token_type = 0;
     uint8_t bssid[OS_ETH_ALEN] = {0};
-    uint8_t channel = 0;
     uint8_t find_token = 0;
+    uint8_t channel = 0;
     uint8_t i;
     int ret;
 
+    awss_trace("%s\n", __func__);
     awss_stop_connecting = 0;
     awss_finished = 0;
     /* these params is useless, keep it for compatible reason */
     aws_start(NULL, NULL, NULL, NULL);
 
     ret = aws_get_ssid_passwd(&ssid[0], &passwd[0], &bssid[0], &token[0],
-                              (char *)&auth, (char *)&encry, &channel);
+                              (char *)&auth, (char *)&encry, &channel, &token_type);
     if (!ret) {
         awss_warn("awss timeout!");
     }
@@ -85,11 +88,8 @@ int __awss_start(void)
             AWSS_UPDATE_STATIS(AWSS_STATIS_CONN_ROUTER_IDX, AWSS_STATIS_TYPE_TIME_START);
         }
 
-        /*ret = os_awss_connect_ap(WLAN_CONNECTION_TIMEOUT_MS, ssid, passwd,
-                                 auth, encry, bssid, channel);*/
-
         ret = awss_connect(ssid, passwd, bssid, ETH_ALEN, find_token != 0 ? token : NULL,
-                           find_token != 0 ? ZC_MAX_TOKEN_LEN : 0);
+                           find_token != 0 ? ZC_MAX_TOKEN_LEN : 0, token_type);
         if (!ret) {
             awss_debug("awss connect ssid:%s success", ssid);
             awss_event_post(IOTX_AWSS_GOT_IP);
@@ -113,8 +113,10 @@ int __awss_start(void)
                 AWSS_UPDATE_STATIS(AWSS_STATIS_CONN_ROUTER_IDX, AWSS_STATIS_TYPE_TIME_SUC);
                 awss_devinfo_notify_stop();
             }
+            dump_awss_status(STATE_WIFI_CONNECT_AP_SUCCESS, "awss connect ssid:%s success", ssid);
         } else {
-            dump_awss_status(STATE_WIFI_CONNECT_AP_FAILED, "awss connect ssid:%s fail", ssid);
+            //dump_awss_status(STATE_WIFI_CONNECT_AP_FAILED, "awss connect ssid:%s fail", ssid);
+            awss_ap_diagnosis(ssid);
 #if defined(AWSS_SUPPORT_ADHA) || defined(AWSS_SUPPORT_AHA)
             if (awss_notify_needed == 0) {
                 awss_event_post(adha != 0 ? IOTX_AWSS_CONNECT_AHA_FAIL : IOTX_AWSS_CONNECT_ADHA_FAIL);

@@ -182,12 +182,52 @@ int CoAPResource_register(CoAPContext *context, const char *path,
     return COAP_SUCCESS;
 }
 
+#ifdef DEVICE_MODEL_GATEWAY 
 int CoAPResource_unregister(CoAPContext *context, const char *path)
 {
-    COAP_DEBUG("This feature isn't supported");
+    char path_calc[COAP_PATH_DEFAULT_SUM_LEN] = {0};
+    CoAPResource *node = NULL;
+    CoAPIntContext *ctx = (CoAPIntContext *)context;
+    path_type_t type = PATH_NORMAL;
+    ARGUMENT_SANITY_CHECK(context, FAIL_RETURN);
+
+    HAL_MutexLock(ctx->resource.list_mutex);
+    if (ctx->resource.count >= ctx->resource.maxcount) {
+        HAL_MutexUnlock(ctx->resource.list_mutex);
+        return COAP_ERROR_DATA_SIZE;
+    }
+    // COAP_INFO("CoAPResource_unregister");
+
+    if (strstr(path, "/#") != NULL) {
+        type = PATH_FILTER;
+    } else {
+        CoAPPathMD5_sum(path, strlen(path), path_calc, COAP_PATH_DEFAULT_SUM_LEN);
+    }
+
+    list_for_each_entry(node, &ctx->resource.list, reslist, CoAPResource) {
+        if (type == PATH_NORMAL && node->path_type == PATH_NORMAL) {
+            if (0 == memcmp(path_calc, node->path, COAP_PATH_DEFAULT_SUM_LEN)) {
+                list_del(&node->reslist);
+                coap_free(node);
+                // COAP_INFO("del %s",path);
+                ctx->resource.count--;
+                break;
+            }
+        } else if(type == PATH_FILTER && node->path_type == PATH_FILTER) {
+            if (0 == strncmp((char *)path, node->filter_path, strlen(path))) {
+                list_del(&node->reslist);
+                coap_free(node->filter_path);
+                coap_free(node);
+                // COAP_INFO("del %s",path);
+                ctx->resource.count--;
+                break;
+            }
+        }
+    }
+    HAL_MutexUnlock(ctx->resource.list_mutex);
     return COAP_ERROR_UNSUPPORTED;
 }
-
+#endif
 int CoAPResource_topicFilterMatch(const char *filter, const char *topic)
 {
     if (filter == NULL || topic == NULL) {

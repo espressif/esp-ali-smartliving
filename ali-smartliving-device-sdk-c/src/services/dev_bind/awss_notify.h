@@ -11,10 +11,11 @@ extern "C"
 #endif
 
 enum {
-    AWSS_NOTIFY_DEV_INFO = 0,
-    AWSS_NOTIFY_DEV_BIND_TOKEN,
-    AWSS_NOTIFY_DEV_RAND_SIGN,
-    AWSS_NOTIFY_SUCCESS,
+    AWSS_NOTIFY_DEV_INFO = 0,            // BASE_INFO: Device base information, coap notify
+    AWSS_NOTIFY_DEV_BIND_TOKEN,          // BASE_INFO + bind token, coap notify
+    AWSS_NOTIFY_DEV_RAND_SIGN,           // BASE_INFO + rand + sign, coap notify
+    AWSS_NOTIFY_SUCCESS,                 // BASE_INFO + device type, coap notify
+    AWSS_NOTIFY_DEV_RESP,                // BASE_INFO + device awss response, coap response
     AWSS_NOTIFY_TYPE_MAX,
 };
 

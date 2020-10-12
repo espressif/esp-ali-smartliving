@@ -4,7 +4,10 @@ $(NAME)_MBINS_TYPE := kernel
 $(NAME)_VERSION := 2.3.0
 $(NAME)_SUMMARY := used for device remote diagnosis
 
-$(NAME)_INCLUDES += .
+$(NAME)_COMPONENTS += framework/bluetooth/breeze
+
+$(NAME)_INCLUDES += . 
+$(NAME)_INCLUDES += ../../../../../../../bluetooth/breeze/api/
 $(NAME)_SOURCES :=
 $(NAME)_SOURCES += dev_diagnosis.c dev_errcode.c dev_state_machine.c dev_offline_ota.c
 

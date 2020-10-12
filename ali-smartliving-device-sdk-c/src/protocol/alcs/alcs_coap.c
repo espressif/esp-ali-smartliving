@@ -11,6 +11,7 @@
 #include "alcs_api_internal.h"
 #include "CoAPServer.h"
 #include "lite-list.h"
+#include "alcs_adapter.h"
 
 #define MAX_PATH_CHECKSUM_LEN (5)
 typedef struct
@@ -145,15 +146,26 @@ static void recv_msg_handler (CoAPContext *context, const char *path, NetworkAdd
 int alcs_resource_register(CoAPContext *context, const char* pk, const char* dn, const char *path, unsigned short permission,
             unsigned int ctype, unsigned int maxage, char needAuth, CoAPRecvMsgHandler callback)
 {
-    COAP_DEBUG("alcs_resource_register, ctx:%p", context);
+    // COAP_DEBUG("alcs_resource_register, ctx:%p", context);
 	COAP_DEBUG("ALCS Resource Register: %s",path);
 
     if (!needAuth) {
         resource_cb_item* item = (resource_cb_item*)coap_malloc (sizeof(resource_cb_item));
         CoAPPathMD5_sum (path, strlen(path), item->path, MAX_PATH_CHECKSUM_LEN);
+        char               calc_path[MAX_PATH_CHECKSUM_LEN];
+	    resource_cb_item* dul_item = NULL;
+        CoAPPathMD5_sum (path, strlen(path), calc_path, MAX_PATH_CHECKSUM_LEN);
+        list_for_each_entry(dul_item,&resource_cb_head,lst,resource_cb_item)
+        {
+            if (memcmp(dul_item->path, calc_path, MAX_PATH_CHECKSUM_LEN) == 0){
+                // COAP_INFO("dul %s",path);
+                coap_free(item);
+                return COAP_SUCCESS;
+            }
+        }
+        // COAP_INFO("add reg %s",path);
         item->cb = callback;
         list_add_tail(&item->lst, &resource_cb_head);
-
         return CoAPResource_register (context, path, permission, ctype, maxage, &recv_msg_handler);
     } else {
 #ifdef USE_ALCS_SECURE
@@ -164,6 +176,28 @@ int alcs_resource_register(CoAPContext *context, const char* pk, const char* dn,
     }
 }
 
+#ifdef DEVICE_MODEL_GATEWAY 
+void alcs_resource_unregister(void *handle, const char* pk, const char* dn)
+{
+	resource_cb_item* del_item = NULL;
+    // char* path = (char*)coap_malloc(sizeof(char)*256);
+    char path[256];
+    iotx_alcs_adapter_t *adapter = (iotx_alcs_adapter_t *)handle;
+    memset(path, 0, sizeof(path));
+    HAL_Snprintf(path, sizeof(path), "/dev/%s/%s/core/service/auth", pk, dn);
+    CoAPResource_unregister(adapter->coap_ctx, path);
+    char               calc_path[MAX_PATH_CHECKSUM_LEN];
+    CoAPPathMD5_sum (path, strlen(path), calc_path, MAX_PATH_CHECKSUM_LEN);
+	list_for_each_entry(del_item,&resource_cb_head,lst,resource_cb_item)
+	{
+        if (memcmp(del_item->path, calc_path, MAX_PATH_CHECKSUM_LEN) == 0){
+            list_del(&del_item->lst);
+            coap_free(del_item);
+            // COAP_INFO("sub unreg %s",path);
+        }
+	}
+}
+#endif
 int alcs_resource_need_auth (CoAPContext *context, const char *path)
 {
     resource_cb_item *node = NULL, *next = NULL;
@@ -344,7 +378,7 @@ static int path_2_option(const char *uri, CoAPMessage *message)
     char  path[COAP_MSG_MAX_PATH_LEN]  = {0};
 
     if (256 < strlen(uri)) {
-        COAP_ERR("The uri length is too loog,len = %d", (int)strlen(uri));
+        COAP_ERR("The uri length is too long,len = %d", (int)strlen(uri));
         return COAP_ERROR_INVALID_LENGTH;
     }
     COAP_DEBUG("The uri is %s", uri);
@@ -381,7 +415,7 @@ int alcs_msg_setAddr (CoAPMessage *message, const char* path, const char* query)
     }
 
     if (255 < strlen(path)) {
-        COAP_ERR("The uri length is too loog,len = %d", (int)strlen(path));
+        COAP_ERR("The uri length is too long,len = %d", (int)strlen(path));
         return COAP_ERROR_INVALID_LENGTH;
     }
 

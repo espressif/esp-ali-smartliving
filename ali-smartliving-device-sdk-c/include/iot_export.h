@@ -27,6 +27,10 @@ extern "C" {
 
 #include <stdint.h>
 
+//#ifndef LINK_VISUAL_ENABLE
+//#define LINK_VISUAL_ENABLE  //only for LV
+//#endif
+
 extern unsigned int g_report_id;
 /* From device.h */
 #define PRODUCT_KEY_LEN     (20)
@@ -35,13 +39,18 @@ extern unsigned int g_report_id;
 #define DEVICE_SECRET_LEN   (64)
 #define PRODUCT_SECRET_LEN  (64)
 
+#define LIVING_SDK_VERSION  "1.6.0"
+#ifdef LIVING_SDK_VERSION
+#define LINKKIT_VERSION     "2.3.0" "_FY_" LIVING_SDK_VERSION
+#else
 #define LINKKIT_VERSION     "2.3.0"
-#define LIVING_SDK_VERSION  "_fy=1.3.0"
+#endif
+
 #define MODULE_VENDOR_ID    (32)    /* Partner ID */
 
 #define HOST_ADDRESS_LEN    (128)
 #define HOST_PORT_LEN       (8)
-#define CLIENT_ID_LEN       (256)
+#define CLIENT_ID_LEN       (384)   /* Enlarge this buffer size due to add token params etc */
 #define USER_NAME_LEN       (512)   /* Extend length for ID2 */
 #define PASSWORD_LEN        (256)   /* Extend length for ID2 */
 #define AESKEY_STR_LEN      (32)
@@ -56,6 +65,7 @@ typedef enum _IOT_LogLevel {
     IOT_LOG_DEBUG,
 } IOT_LogLevel;
 
+#define IOTX_CLOUD_REGION_INVALID (-100)
 /* region type */
 typedef enum IOTX_CLOUD_REGION_TYPES {
     /* Shanghai */
@@ -67,17 +77,23 @@ typedef enum IOTX_CLOUD_REGION_TYPES {
     /* Japan */
     IOTX_CLOUD_REGION_JAPAN,
 
-    /* America */
-    IOTX_CLOUD_REGION_USA_WEST,
+    /* America east*/
+    IOTX_CLOUD_REGION_USA_EAST,
 
     /* Germany */
     IOTX_CLOUD_REGION_GERMANY,
 
-    /* Custom setting */
-    IOTX_CLOUD_REGION_CUSTOM,
+    /* America west*/
+    IOTX_CLOUD_REGION_USA_WEST,
 
-    /* Maximum number of domain */
-    IOTX_CLOUD_DOMAIN_MAX
+    /*Define the valid maximum region id is 19999*/
+    IOTX_CLOUD_REGION_MAX = 19999,
+
+    /* Custom setting */
+    IOTX_CLOUD_REGION_CUSTOM = 20000,
+
+    /* Maximum number of custom region */
+    IOTX_CLOUD_CUSTOM_REGION_MAX
 } iotx_cloud_region_types_t;
 
 typedef struct {
@@ -115,6 +131,8 @@ typedef enum {
     IOTX_IOCTL_SET_REGION,              /* value(int*): iotx_cloud_region_types_t */
     IOTX_IOCTL_GET_REGION,              /* value(int*) */
     IOTX_IOCTL_SET_MQTT_DOMAIN,         /* value(const char*): point to mqtt domain string */
+    IOTX_IOCTL_SET_MQTT_PORT,           /* value(int*): point to mqtt port number*/
+    IOTX_IOCTL_SET_ENV,                 /* value(int*): 0 - env is ONLINE; 1 - env is PRE; 2 - env is DAILY*/
     IOTX_IOCTL_SET_HTTP_DOMAIN,         /* value(const char*): point to http domain string */
     IOTX_IOCTL_SET_DYNAMIC_REGISTER,    /* value(int*): 0 - Disable Dynamic Register, 1 - Enable Dynamic Register */
     IOTX_IOCTL_GET_DYNAMIC_REGISTER,    /* value(int*) */
@@ -123,6 +141,7 @@ typedef enum {
     IOTX_IOCTL_SEND_PROP_SET_REPLY,     /* value(int*): 0 - Disable send post set reply by devid; 1 - Enable property set reply by devid */
     IOTX_IOCTL_SET_SUBDEV_SIGN,         /* value(const char*): only for slave device, set signature of subdevice */
     IOTX_IOCTL_GET_SUBDEV_LOGIN,        /* value(int*): 0 - SubDev is logout; 1 - SubDev is login */
+    IOTX_IOCTL_QUERY_DEVID,             /* value(iotx_linkkit_dev_meta_info_t*): device meta info, only productKey and deviceName is required, ret value is subdev_id or -1 */
     IOTX_IOCTL_SEND_EVENT_NOTIFY_REPLY  /* value(int*): 0 - Disable send post set reply by devid; 1 - Enable event notify reply by devid */
 } iotx_ioctl_option_t;
 
@@ -132,6 +151,7 @@ typedef enum {
     ITE_CONNECT_FAIL,
     ITE_DISCONNECTED,
     ITE_REDIRECT,
+    ITE_OFFLINE_RESET,
     ITE_RAWDATA_ARRIVED,
 #ifndef LINK_VISUAL_ENABLE
     ITE_SERVICE_REQUEST,
@@ -144,6 +164,7 @@ typedef enum {
     ITE_TRIGGER_EVENT_REPLY,
     ITE_TIMESTAMP_REPLY,
     ITE_TOPOLIST_REPLY,
+    ITE_TOPO_CHANGE,
     ITE_PERMIT_JOIN,
     ITE_SUBDEV_MISC_OPS,
     ITE_INITIALIZE_COMPLETED,
@@ -183,12 +204,13 @@ DECLARE_EVENT_CALLBACK(ITE_CONNECT_SUCC,         int (*cb)(void))
 DECLARE_EVENT_CALLBACK(ITE_CONNECT_FAIL,         int (*cb)(void))
 DECLARE_EVENT_CALLBACK(ITE_DISCONNECTED,         int (*cb)(void))
 DECLARE_EVENT_CALLBACK(ITE_REDIRECT,             int (*cb)(void))
+DECLARE_EVENT_CALLBACK(ITE_OFFLINE_RESET,    int (*cb)(void))
 DECLARE_EVENT_CALLBACK(ITE_RAWDATA_ARRIVED,      int (*cb)(const int, const unsigned char *, const int))
 #ifndef LINK_VISUAL_ENABLE
 DECLARE_EVENT_CALLBACK(ITE_SERVICE_REQUEST,       int (*cb)(const int, const char *, const int, const char *, const int,
                        char **, int *))
 #else
-DECLARE_EVENT_CALLBACK(ITE_LINK_VISUAL,          int (*cb)(const int, const char *, const int))
+DECLARE_EVENT_CALLBACK(ITE_LINK_VISUAL,          int (*cb)(const int, const char *, const int, const char *, const int))
 DECLARE_EVENT_CALLBACK(ITE_SERVICE_REQUST,       int (*cb)(const int, const char *, const int, const char *, const int, const char *, const int,
                        char **, int *))
 #endif
@@ -199,6 +221,7 @@ DECLARE_EVENT_CALLBACK(ITE_TRIGGER_EVENT_REPLY,  int (*cb)(const int, const int,
                        const char *, const int))
 DECLARE_EVENT_CALLBACK(ITE_TIMESTAMP_REPLY,      int (*cb)(const char *))
 DECLARE_EVENT_CALLBACK(ITE_TOPOLIST_REPLY,       int (*cb)(const int, const int, const int, const char *, const int))
+DECLARE_EVENT_CALLBACK(ITE_TOPO_CHANGE,          int (*cb)(const int, const char *, const int))
 DECLARE_EVENT_CALLBACK(ITE_SUBDEV_MISC_OPS,      int (*cb)(const int, int, const int, const char *, const int))
 DECLARE_EVENT_CALLBACK(ITE_PERMIT_JOIN,          int (*cb)(const char *, const int))
 DECLARE_EVENT_CALLBACK(ITE_INITIALIZE_COMPLETED, int (*cb)(const int))
@@ -316,6 +339,9 @@ DLL_IOT_API int IOT_Ioctl(int option, void *data);
 #include "exports/iot_export_http2.h"
 #include "exports/iot_export_http2_stream.h"
 #include "exports/iot_export_diagnosis.h"
+#include "exports/iot_export_guider.h"
+#include "exports/iot_export_linkkit.h"
+#include "exports/iot_export_reset.h"
 
 #if defined(__cplusplus)
 }

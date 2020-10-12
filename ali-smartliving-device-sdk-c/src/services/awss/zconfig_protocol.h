@@ -11,15 +11,14 @@
 #include "zconfig_lib.h"
 
 #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
-extern "C" {
+extern "C"
+{
 #endif
 
 enum state_machine {
     STATE_CHN_SCANNING,
     STATE_CHN_LOCKED_BY_P2P,  // wps/action used for enrollee
-#ifdef AWSS_SUPPORT_SMARTCONFIG_MCAST
-    STATE_CHN_LOCKED_BY_MCAST,   /* multidcast used for smartconfig */
-#endif
+    STATE_CHN_LOCKED_BY_MCAST,   /* broadcast used for smartconfig */
     STATE_CHN_LOCKED_BY_BR,   // broadcast used for smartconfig
     STATE_GOT_BEACON,
     STATE_RCV_IN_PROGRESS,
@@ -31,6 +30,25 @@ enum _GOT_RESULT_ {
     GOT_NOTHING = 0,
     GOT_CHN_LOCK = 1,
     GOT_SSID_PASSWD = 2,
+};
+
+#define MCAST_MAX_LEN (126)
+struct mcast_smartconfig_data_type {
+/* result, final result */
+uint8_t tlen;
+uint8_t flag;
+uint8_t passwd_len;
+uint8_t *passwd;
+uint8_t ssid_len;
+uint8_t *ssid;
+uint8_t token_len;
+uint8_t *token;
+uint8_t bssid_type_len;
+uint8_t *bssid;
+uint8_t ssid_is_gbk;
+uint8_t ssid_auto_complete_disable;
+uint8_t data[MCAST_MAX_LEN];
+uint8_t checksum;
 };
 
 #define PASSWD_ENCRYPT_BIT_OFFSET (1)
@@ -113,9 +131,10 @@ struct zconfig_data {
 
     /* result, final result */
     uint8_t ssid[ZC_MAX_SSID_LEN];
+    uint8_t token[ZC_MAX_TOKEN_LEN];
+    uint8_t token_type;
     uint8_t passwd[ZC_MAX_PASSWD_LEN];
     uint8_t bssid[ETH_ALEN];
-    uint8_t token[ZC_MAX_TOKEN_LEN];
     uint8_t ssid_is_gbk;
     uint8_t ssid_auto_complete_disable;
 
@@ -125,6 +144,7 @@ struct zconfig_data {
     uint8_t android_bssid[ETH_ALEN];
     uint8_t android_src[ETH_ALEN];
     void *mutex;
+    uint8_t got_ssid_passwd_from_p2p;
 };
 
 #define zc_state                       zconfig_data->data[tods].state_machine
@@ -146,9 +166,10 @@ struct zconfig_data {
 #define zc_channel                     zconfig_data->channel
 
 #define zc_ssid                        (&zconfig_data->ssid[0])
+#define zc_token                       (&zconfig_data->token[0])
+#define zc_token_type                  (&zconfig_data->token_type)
 #define zc_passwd                      (&zconfig_data->passwd[0])
 #define zc_bssid                       (&zconfig_data->bssid[0])
-#define zc_token                       (&zconfig_data->token[0])
 #define zc_ssid_is_gbk                 (zconfig_data->ssid_is_gbk)
 #define zc_ssid_auto_complete_disable  (zconfig_data->ssid_auto_complete_disable)
 
@@ -165,6 +186,7 @@ struct zconfig_data {
 #define zc_android_bssid               (&zconfig_data->android_bssid[0])
 #define zc_android_src                 (&zconfig_data->android_src[0])
 #define zc_mutex                       zconfig_data->mutex
+#define zc_got_ssid_passwd_from_p2p    zconfig_data->got_ssid_passwd_from_p2p
 
 void zconfig_force_destroy(void);
 void encode_chinese(uint8_t *in, uint8_t in_len, uint8_t *out, uint8_t *out_len, uint8_t bits);
@@ -177,7 +199,7 @@ int is_ascii_string(uint8_t *str);
  * [OUT] auth, encry, channel
  */
 uint8_t zconfig_get_auth_info(uint8_t *ssid, uint8_t *bssid, uint8_t *auth, uint8_t *encry, uint8_t *channel);
-uint8_t zconfig_callback_over(uint8_t *ssid, uint8_t *passwd, uint8_t *bssid, uint8_t *token);
+uint8_t zconfig_callback_over(uint8_t *ssid, uint8_t *passwd, uint8_t *bssid, uint8_t *token, uint8_t *token_type);
 
 #define MAC_FORMAT                "%02x%02x%02x%02x%02x%02x"
 #define MAC_VALUE(mac)            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
@@ -187,30 +209,9 @@ extern const char *zc_default_passwd;
 extern struct zconfig_data *zconfig_data;
 extern uint8_t zconfig_finished;
 /* broadcast mac address */
-extern uint8_t br_mac[ETH_ALEN];
+extern const uint8_t br_mac[ETH_ALEN];
 /* all zero mac address */
-extern uint8_t zero_mac[ETH_ALEN];
-
-#ifdef AWSS_SUPPORT_SMARTCONFIG_MCAST
-#define MCAST_MAX_LEN (127)
-struct mcast_smartconfig_data_type {
-    /* result, final result */
-    uint8_t tlen;
-    uint8_t flag;
-    uint8_t passwd_len;
-    uint8_t *passwd;
-    uint8_t ssid_len;
-    uint8_t *ssid;
-    uint8_t token_len;
-    uint8_t *token;
-    uint8_t bssid_type_len;
-    uint8_t *bssid;
-    uint8_t ssid_is_gbk;
-    uint8_t ssid_auto_complete_disable;
-    uint8_t data[MCAST_MAX_LEN];
-    uint8_t checksum;
-};
-#endif
+extern const uint8_t zero_mac[ETH_ALEN];
 
 #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
 }

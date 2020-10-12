@@ -68,7 +68,7 @@ static void httpclient_base64enc(char *out, const char *in)
 int httpclient_conn(httpclient_t *client)
 {
     if (0 != client->net.connect(&client->net)) {
-        utils_err("establish connection failed");
+        utils_err("httpclient_conn fail");
         return ERROR_HTTP_CONN;
     }
 
@@ -229,8 +229,6 @@ int httpclient_send_auth(httpclient_t *client, char *send_buf, int *send_idx)
     return SUCCESS_RETURN;
 }
 
-extern int iotx_guider_get_region(void);
-
 int httpclient_send_header(httpclient_t *client, const char *url, int method, httpclient_data_t *client_data)
 {
     char scheme[8] = { 0 };
@@ -293,8 +291,20 @@ int httpclient_send_header(httpclient_t *client, const char *url, int method, ht
 
     len = 0; /* Reset send buffer */
 
-    HAL_Snprintf(buf, HTTPCLIENT_SEND_BUF_SIZE, "%s %s HTTP/1.1\r\nHost: %s\r\n", meth, path, host); /* Write request */
+#ifdef ON_PRE
+    iotx_cloud_region_types_t region_type;
 
+    IOT_Ioctl(IOTX_IOCTL_GET_REGION, &region_type);
+    if (IOTX_CLOUD_REGION_SINGAPORE == region_type) {
+        utils_warning("hacking HTTP auth requeset for singapore+pre-online to 'iot-auth.ap-southeast-1.aliyuncs.com'");
+        HAL_Snprintf(buf, HTTPCLIENT_SEND_BUF_SIZE, "%s %s HTTP/1.1\r\nHost: %s\r\n", meth, path,
+                     "iot-auth.ap-southeast-1.aliyuncs.com"); /* Write request */
+    } else {
+        HAL_Snprintf(buf, HTTPCLIENT_SEND_BUF_SIZE, "%s %s HTTP/1.1\r\nHost: %s\r\n", meth, path, host); /* Write request */
+    }
+#else
+    HAL_Snprintf(buf, HTTPCLIENT_SEND_BUF_SIZE, "%s %s HTTP/1.1\r\nHost: %s\r\n", meth, path, host); /* Write request */
+#endif
     ret = httpclient_get_info(client, send_buf, &len, buf, strlen(buf));
     if (ret) {
         utils_err("Could not write request");
@@ -340,7 +350,6 @@ int httpclient_send_header(httpclient_t *client, const char *url, int method, ht
     }
     ret = SUCCESS_RETURN;
 err:
-    utils_err("err = %d", ret);
     if (host != NULL) {
         httpc_free(host);
     }
@@ -676,7 +685,7 @@ int httpclient_response_parse(httpclient_t *client, char *data, int len, uint32_
       [<response-body>] */
     char *crlf_ptr = strstr(data, "\r\n");
     if (crlf_ptr == NULL) {
-        utils_err("\r\n not found");
+        utils_err("httpc no response");
         return ERROR_HTTP_UNRESOLVED_DNS;
     }
 
@@ -710,13 +719,14 @@ int httpclient_response_parse(httpclient_t *client, char *data, int len, uint32_
     /* try to read more header again until find response head ending "\r\n\r\n" */
     while (NULL == (ptr_body_end = strstr(data, "\r\n\r\n"))) {
         /* try to read more header */
-        int max_remain_len = HTTPCLIENT_CHUNK_SIZE - len - 1;
+        int max_remain_len = HTTPCLIENT_CHUNK_SIZE - len -1;
         if (max_remain_len <= 0) {
-            utils_err("buffer exceeded max\n");
+            utils_debug("buffer exceeded max\n");
             return ERROR_HTTP_PARSE;
         }
         max_remain_len = max_remain_len > HTTPCLIENT_RAED_HEAD_SIZE ? HTTPCLIENT_RAED_HEAD_SIZE : max_remain_len;
         ret = httpclient_recv(client, data + len, 1, max_remain_len, &new_trf_len, iotx_time_left(&timer));
+
         if (ret == ERROR_HTTP_CONN) {
             return ret;
         }
@@ -829,9 +839,7 @@ int httpclient_recv_response(httpclient_t *client, uint32_t timeout_ms, httpclie
             ret = httpclient_response_parse(client, buf, reclen, iotx_time_left(&timer), client_data);
         }
     }
-    ret = SUCCESS_RETURN;
 err:
-    utils_err("err = %d", ret);
     if (buf != NULL) {
         httpc_free(buf);
     }
@@ -859,9 +867,9 @@ int httpclient_common(httpclient_t *client, const char *url, int port, const cha
 
     if (0 == client->net.handle) {
         /* Establish connection if no. */
-        ret = iotx_net_init(&client->net, host, port, ca_crt, NULL);
+        ret = iotx_net_init(&client->net, host, port, ca_crt);
         if (0 != ret) {
-            dump_http_status(STATE_HTTP_NWK_INIT_FAIL, NULL);
+            dump_http_status(STATE_HTTP_NWK_INIT_FAIL, "net init fail");
             return ret;
         }
 
@@ -923,7 +931,7 @@ int iotx_post(httpclient_t *client,
 
     if (0 == client->net.handle) {
         /* Establish connection if no. */
-        ret = iotx_net_init(&client->net, host, port, ca_crt, NULL);
+        ret = iotx_net_init(&client->net, host, port, ca_crt);
         if (0 != ret) {
             return ret;
         }

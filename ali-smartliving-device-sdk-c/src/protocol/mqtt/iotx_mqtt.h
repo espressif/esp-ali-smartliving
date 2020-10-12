@@ -44,6 +44,7 @@ typedef struct iotx_mc_topic_handle_s {
     const char *topic_filter;
     iotx_mc_topic_type_t topic_type;
     iotx_mqtt_event_handle_t handle;
+    iotx_mqtt_qos_t qos;
     struct iotx_mc_topic_handle_s *next;
 } iotx_mc_topic_handle_t;
 

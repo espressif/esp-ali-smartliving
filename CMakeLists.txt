@@ -19,6 +19,7 @@ set(COMPONENT_SRCDIRS
 register_component()
 component_compile_options(-DAUTH_MODE_CERT)
 
-target_link_libraries(${COMPONENT_TARGET} "-L ${lib_path}")
-target_link_libraries(${COMPONENT_TARGET} iot_sdk)
-target_link_libraries(${COMPONENT_TARGET} -u ota_pubn_buf)
+add_library(iot_sdk STATIC IMPORTED)
+set_property(TARGET iot_sdk PROPERTY IMPORTED_LOCATION ${lib_path}/libiot_sdk.a)
+target_link_libraries(${COMPONENT_LIB} INTERFACE iot_sdk)
+set_property(TARGET iot_sdk APPEND PROPERTY INTERFACE_LINK_LIBRARIES ${COMPONENT_LIB})

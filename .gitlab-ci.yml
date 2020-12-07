@@ -24,13 +24,13 @@ build_esp8266_demo:
     - make defconfig
     - make
 
-build_esp32_demo_cmake_v3.3:
+build_esp32_demo_cmake_v4.2:
   stage: build
   image: $CI_DOCKER_REGISTRY/ae-esp32-ci-env:latest-3cf42c4c
   tags:
     - build
   script:
-    - export IDF_PATH=~/.espressif/idf/esp-idf-v3.3
+    - export IDF_PATH=~/.espressif/idf/esp-idf-v4.2
     - . $IDF_PATH/export.sh
     - cd ali-smartliving-device-sdk-c
     - make distclean
@@ -46,7 +46,7 @@ build_esp32s2_demo_cmake_master:
   tags:
     - build
   script:
-    - export IDF_PATH=~/.espressif/idf/esp-idf
+    - export IDF_PATH=~/.espressif/idf/esp-idf-v4.2
     - . $IDF_PATH/export.sh
     - cd ali-smartliving-device-sdk-c
     - make distclean

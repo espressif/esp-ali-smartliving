@@ -33,13 +33,13 @@ ESP 设备包括 [ESP芯片](https://www.espressif.com/zh-hans/products/hardware
 `product key`, `product secert`, `device name`, `device secret` 将在 6.2.3 节用到。
 
 # <span id = "compileprepare">4.环境搭建</span>
-**如果您熟悉 ESP 开发环境，可以很顺利理解下面步骤; 如果您不熟悉某个部分，比如编译，烧录，需要您结合官方的相关文档来理解。如您需阅读 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/v3.3.2/index.html)文档等。**  
+**如果您熟悉 ESP 开发环境，可以很顺利理解下面步骤; 如果您不熟悉某个部分，比如编译，烧录，需要您结合官方的相关文档来理解。如您需阅读 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/v4.2/index.html)文档等。**
 
 ## 4.1 编译器环境搭建
 - ESP8266 平台: 根据[官方链接](https://github.com/espressif/ESP8266_RTOS_SDK)中 **Get toolchain**，获取 toolchain
 - ESP32 & ESP32S2 平台：根据[官方链接](https://github.com/espressif/esp-idf/blob/master/docs/zh_CN/get-started/linux-setup.rst)中 **工具链的设置**，下载 toolchain
 
-toolchain 设置参考 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/v3.3.2/get-started/index.html)。  
+toolchain 设置参考 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/v4.2/get-started/index.html)。
 ## 4.2 烧录工具/下载工具获取
 - ESP8266 平台：烧录工具位于 [ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK#get-toolchain) 下 `./components/esptool_py/esptool/esptool.py`
 - ESP32 & ESP32S2 平台：烧录工具位于 [esp-idf](https://github.com/espressif/esp-idf) 下 `./components/esptool_py/esptool/esptool.py`
@@ -57,15 +57,15 @@ $ ./components/esptool_py/esptool/esptool.py --help
   - ESP8266 平台: [ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK)
 
 > Espressif SDK 下载好后：  
-> ESP-IDF: 请切换到 release v3.3.2 tag 版本： `git checkout v3.3.2`
-  如果需要使用 ESP32S2 模组，请切换到 release/v4.2 版本： `git checkout release/v4.2`  
-> ESP8266_RTOS_SDK: 请切换到 release/v3.3 版本： `git checkout release/v3.3`
+> ESP-IDF: 请切换到 release v4.2 tag 版本： `git checkout v4.2`
+
+> ESP8266_RTOS_SDK: 请切换到 v3.3 tag 版本： `git checkout v3.3`
 
 # <span id = "makeflash">6.编译 & 烧写 & 运行</span>
 ## 6.1 编译
 
 ### 6.1.1 导出编译器
-参考 [工具链的设置](https://docs.espressif.com/projects/esp-idf/zh_CN/v3.3.2/get-started/linux-setup.html)
+参考 [工具链的设置](https://docs.espressif.com/projects/esp-idf/zh_CN/v4.2/get-started/linux-setup.html)
 
 ### 6.1.2 编译 ali-smartliving-device-sdk-c 库
 在 esp-ali-smartliving 目录下执行：
@@ -86,10 +86,7 @@ cd examples/solutions/smart_light
 make defconfig
 make menuconfig
 ```
-如果需要编译esp32s2版本, 请按照如下步骤修改编译:
-
-**修改 ESP-IDF SDK，按照 [链接](https://github.com/espressif/esp-idf/commit/7b9ab1e597f1360f01fa63d56323b1d82205ee75) 进行修改。** 
-
+如果需要编译esp32s2版本, 请按照如下步骤编译:
 执行如下命令，以 solo 示例为例，目前只支持 solo 和 smart_light 示例。
 
 ```
